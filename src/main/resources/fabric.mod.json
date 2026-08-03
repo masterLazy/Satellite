@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "satellite",
+	"version": "${version}",
+	"name": "Satellite",
+	"description": "Powerful server management toolkit",
+	"authors": [
+		"masterLazy"
+	],
+	"contact": {
+		"homepage": "https://github.com/masterLazy/Satellite",
+		"sources": "https://github.com/masterLazy/Satellite"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/satellite/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"masterlazy.satellite.Satellite"
+		],
+		"client": [
+			"masterlazy.satellite.client.SatelliteClient"
+		]
+	},
+	"mixins": [
+		"satellite.mixins.json",
+		{
+			"config": "satellite.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

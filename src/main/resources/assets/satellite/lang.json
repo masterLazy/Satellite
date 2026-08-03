@@ -1,0 +1,34 @@
+{
+  "connect.msg": "§e欢迎来到服务器！游玩前请先登录",
+  "connect.newUser": "§b你尚未注册，请用 /register 为你的用户名注册",
+  "connect.oldUser": "§e§b你已注册，请用 /login 登录你的用户名",
+  "connect.title": "§e欢迎，%s",
+
+  "login.logged": "§e你已经登录了",
+  "login.unregistered": "§c你尚未注册！ 请使用 /register 注册",
+  "login.incorrectPwd": "§c密码不匹配，请重试",
+  "login.success": "§e%s登录成功",
+  "login.local": "§e正在跳过本地玩家%s的登录",
+
+  "reg.registered": "§c你已经注册了！请使用 /login 登录",
+  "reg.pwdNotMatch": "§c两次输入的密码不一致， 请重试",
+  "reg.success": "§e注册成功",
+
+  "pwd.change.incorrectPwd": "§c旧密码不匹配，请重试",
+  "pwd.change.pwdNotMatch": "§c两次输入的密码不一致， 请重试",
+  "pwd.change.success": "§e密码更改成功",
+  "pwd.reset.unregistered": "§c该玩家尚未注册",
+  "pwd.reset.success": "§e已重置%s的密码为:",
+  "pwd.reload.success": "§e密码已重新加载",
+  "pwd.list.begin": "§e共有%d名已注册玩家\n",
+  "pwd.list.warn": "§c共有%d名未注册玩家在白名单（或管理员名单）中\n",
+  "pwd.copy": "单击拷贝密码到剪贴板",
+
+  "unlogged.msg": "§e请先登录再发送信息",
+  "unlogged.cmd": "§e请先登录再执行命令",
+  "unlogged.title": "§e请先登录再进行游戏！",
+
+  "whitelist.safe_add.failed": "§e该玩家已在白名单中",
+  "whitelist.safe_add.registered": "§e该玩家已注册，跳过自动注册",
+  "whitelist.safe_add.pwd": "§e已为%s注册，其初始密码为："
+}

@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "masterlazy.satellite.client.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+      "masterlazy.satellite.client.mixin.ExampleClientMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
