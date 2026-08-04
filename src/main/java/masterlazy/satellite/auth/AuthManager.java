@@ -29,7 +29,7 @@ public class AuthManager {
     public void onServerPlayConnectionJoin(ServerPlayer player) {
         String username = player.getName().getString();
         AuthSession session = getSession(player);
-        if (session == null) return;
+        if (session == null || Satellite.isSingleGame()) return;
         session.setLoggedIn(false);
 
         Satellite.sendMessageWithKey(player, "connect.msg");
@@ -45,7 +45,7 @@ public class AuthManager {
 
     public void onServerPlayConnectionDisconnect(ServerPlayer player) {
         AuthSession session = getSession(player);
-        if (session == null) return;
+        if (session == null || Satellite.isSingleGame()) return;
         // Revert the player's profile
         if (!session.isLoggedIn()) { // NOTE: Don't remove this judgement
             session.setLoggedIn(true);
@@ -55,7 +55,7 @@ public class AuthManager {
 
     public boolean onServerMessageAllowChatMessage(ServerPlayer player) {
         AuthSession session = getSession(player);
-        if (session == null) return false;
+        if (session == null || Satellite.isSingleGame()) return false;
         if (session.isLoggedIn()) return true;
         Satellite.sendMessageWithKey(player, "unlogged.msg");
         return false;
@@ -63,7 +63,7 @@ public class AuthManager {
 
     public boolean canExecuteCommand(ServerPlayer player, String command) {
         AuthSession session = getSession(player);
-        if (session == null) return false;
+        if (session == null || Satellite.isSingleGame()) return false;
         if (session.isLoggedIn()) return true;
         if (command.startsWith("login") || command.startsWith("register")) return true;
         Satellite.sendMessageWithKey(player, "unlogged.cmd");

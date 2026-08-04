@@ -18,6 +18,7 @@ import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
 import net.minecraft.sounds.SoundEvents;
@@ -25,11 +26,15 @@ import net.minecraft.sounds.SoundSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.function.Function;
 
 public class Satellite implements ModInitializer {
     public static final String MOD_ID = "Satellite";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final String BASE_DIR = '.' + MOD_ID.toLowerCase() + '/';
     public static MinecraftServer SERVER;
 
     public static LangManager langManager = new LangManager();
@@ -41,6 +46,12 @@ public class Satellite implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             SERVER = server;
         });
+        try {
+            Files.createDirectories(Path.of(BASE_DIR));
+        } catch (IOException e) {
+            LOGGER.error("[Satellite] Failed to crate base directory {}", BASE_DIR, e);
+        }
+
         // Commands
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             LoginCommand.register(dispatcher);
@@ -62,6 +73,10 @@ public class Satellite implements ModInitializer {
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
             return authManager.onServerMessageAllowChatMessage(sender.connection.getPlayer());
         });
+    }
+
+    public static boolean isSingleGame() {
+        return !(SERVER instanceof DedicatedServer);
     }
 
     // Helpers

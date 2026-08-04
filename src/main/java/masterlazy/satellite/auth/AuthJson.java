@@ -20,8 +20,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class AuthJson {
-
-    private static final File JSON_FILE = new File("registered-players.json");
+    private static final String JSON_PATH = Satellite.BASE_DIR + "auth.json";
+    private static final File JSON_FILE = new File(JSON_PATH);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static final ThreadLocal<MessageDigest> SHA256 = ThreadLocal.withInitial(() -> {
@@ -65,19 +65,18 @@ public class AuthJson {
     public void save(String username, String password) {
         lock.writeLock().lock();
         try {
-            String key = username;
-            JsonObject player = playerMap.get(key);
+            JsonObject player = playerMap.get(username);
             String hash = sha256Hex(password);
 
             if (player != null) {
-                player.addProperty("name", key);
+                player.addProperty("name", username);
                 player.addProperty("pwd_hash", hash);
             } else {
                 player = new JsonObject();
-                player.addProperty("name", key);
+                player.addProperty("name", username);
                 player.addProperty("pwd_hash", hash);
                 jsonArray.add(player);
-                playerMap.put(key, player);
+                playerMap.put(username, player);
             }
             persist();
         } finally {

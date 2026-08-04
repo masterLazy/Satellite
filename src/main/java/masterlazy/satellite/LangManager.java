@@ -28,8 +28,7 @@ public class LangManager {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             lang = gson.fromJson(reader, typeOfMap);
         } catch (Exception e) {
-            Satellite.LOGGER.error("[Satellite] Exception occurred when loading lang.json. Did you MODIFIED it wrongly?");
-            Satellite.LOGGER.error(e.toString());
+            Satellite.LOGGER.error("[Satellite] Failed to load lang.json. Did you MODIFIED it wrongly?", e);
         }
     }
 

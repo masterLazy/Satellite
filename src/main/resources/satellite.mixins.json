@@ -3,10 +3,12 @@
   "package": "masterlazy.satellite.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "DedicatedServerMixin",
     "ServerGamePacketListenerImplMixin",
     "UserWhiteListMixin",
     "WhitelistCommandMixin"
+  ],
+  "server": [
+    "DedicatedServerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
