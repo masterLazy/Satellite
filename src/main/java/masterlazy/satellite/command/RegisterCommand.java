@@ -11,6 +11,8 @@ import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 public class RegisterCommand {
+    public static final String REGEX = "^register\\s+\\S+\\s+\\S+$";
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("register")
                 .then(argument("newPassword", StringArgumentType.word())
@@ -19,14 +21,15 @@ public class RegisterCommand {
             ServerPlayer player = ctx.getSource().getPlayer();
             if (player == null) return 0;
             AuthSession session = Satellite.authManager.getSession(player);
-            if (session == null) {
-                Satellite.LOGGER.warn("[Satellite] RegisterCommand failed because session is null");
-                return 0;
-            }
+            if (session == null) return 0;
+
             String password = StringArgumentType.getString(ctx, "newPassword");
             String username = player.getName().getString();
 
-            if (Satellite.authJson.isRegistered(username)) {
+            if (session.isLoggedIn()) {
+                Satellite.sendMessageWithKey(player, "reg.logged");
+            }
+            else if (Satellite.authJson.isRegistered(username)) {
                 Satellite.sendMessageWithKey(player, "reg.registered");
             } else if (!password.equals(StringArgumentType.getString(ctx, "confirmPassword"))) {
                 Satellite.sendMessageWithKey(player, "reg.pwdNotMatch");

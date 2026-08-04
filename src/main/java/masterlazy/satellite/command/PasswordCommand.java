@@ -11,7 +11,8 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
 
-import java.util.ArrayList;
+import java.util.*;
+import java.util.stream.Stream;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
@@ -71,7 +72,7 @@ public class PasswordCommand {
             }))).then(literal("reload")
                 .requires(source -> source.hasPermission(3)) // op only
         .executes(ctx -> {
-            Satellite.authJson.read();
+            Satellite.authJson.load();
             ServerPlayer player = ctx.getSource().getPlayer();
             if (player != null) {
                 Satellite.sendMessageWithKey(player, "pwd.reload.success");
@@ -81,39 +82,27 @@ public class PasswordCommand {
                 .requires(source -> source.hasPermission(3)) // op only
         .executes(ctx -> {
             StringBuilder msg = new StringBuilder();
-            ArrayList<String> regList = Satellite.authJson.getPlayers();
+            String[] registeredPlayers = Satellite.authJson.getRegisteredPlayers();
 
             // List all registered players
-            msg.append(String.format(Satellite.lang("pwd.list.begin"), regList.size()));
-            for (int i = 0; i < regList.size(); i++) {
-                msg.append(regList.get(i));
-                if (i < regList.size() - 1) {
-                    msg.append(',');
-                }
-            }
+            String registeredListStr = String.join(",", registeredPlayers);
+            msg .append(String.format(Satellite.lang("pwd.list.header"), registeredPlayers.length))
+                .append(registeredListStr);
 
-            // Warn players in whitelist/op-list but not registered
-            PlayerList playerList = ctx.getSource().getServer().getPlayerList();
-            ArrayList<String> warnList = new ArrayList<>();
-            for (String s : playerList.getWhiteListNames()) {
-                if (!regList.contains(s.toLowerCase())) {
-                    warnList.add(s);
-                }
-            }
-            for (String s : playerList.getOpNames()) {
-                if (!regList.contains(s.toLowerCase())) {
-                    warnList.add(s);
-                }
-            }
+            // Warn players in whitelist / op-list but not registered
+            PlayerList playerList = Satellite.Server.getPlayerList();
+            List<String> warnList = Stream.concat(
+                            Arrays.stream(playerList.getWhiteListNames()),
+                            Arrays.stream(playerList.getOpNames())
+                    )
+                    .distinct()
+                    .filter(name -> !Satellite.authJson.isRegistered(name))
+                    .toList();
 
             if (!warnList.isEmpty()) {
-                msg.append('\n').append(String.format(Satellite.lang("pwd.list.warn"), warnList.size()));
-                for (int i = 0; i < warnList.size(); i++) {
-                    msg.append(warnList.get(i));
-                    if (i < warnList.size() - 1) {
-                        msg.append(",");
-                    }
-                }
+                String warnListStr = String.join(",", warnList);
+                msg .append(String.format(Satellite.lang("pwd.list.warn"), warnList.size()))
+                    .append(warnListStr);
             }
 
             ServerPlayer player = ctx.getSource().getPlayer();

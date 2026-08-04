@@ -1,5 +1,7 @@
 package masterlazy.satellite;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import masterlazy.satellite.auth.AuthJson;
 import masterlazy.satellite.auth.AuthManager;
@@ -35,7 +37,9 @@ public class Satellite implements ModInitializer {
     public static final String MOD_ID = "Satellite";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static final String BASE_DIR = '.' + MOD_ID.toLowerCase() + '/';
-    public static MinecraftServer SERVER;
+    public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    public static MinecraftServer Server;
 
     public static LangManager langManager = new LangManager();
     public static AuthManager authManager = new AuthManager();
@@ -44,7 +48,7 @@ public class Satellite implements ModInitializer {
     @Override
     public void onInitialize() {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            SERVER = server;
+            Server = server;
         });
         try {
             Files.createDirectories(Path.of(BASE_DIR));
@@ -76,7 +80,7 @@ public class Satellite implements ModInitializer {
     }
 
     public static boolean isSingleGame() {
-        return !(SERVER instanceof DedicatedServer);
+        return !(Server instanceof DedicatedServer);
     }
 
     // Helpers
@@ -98,7 +102,7 @@ public class Satellite implements ModInitializer {
     }
 
     public static void sendGlobalMessage(String text) {
-        PlayerList list = SERVER.getPlayerList();
+        PlayerList list = Server.getPlayerList();
         list.broadcastSystemMessage(Component.literal(text), false);
     }
 
@@ -106,7 +110,7 @@ public class Satellite implements ModInitializer {
         Component component = Component.literal(title);
         Function<Component, Packet<?>> f = ClientboundSetTitleTextPacket::new;
         try {
-            player.connection.send(f.apply(ComponentUtils.updateForEntity(SERVER.createCommandSourceStack(), component, player, 0)));
+            player.connection.send(f.apply(ComponentUtils.updateForEntity(Server.createCommandSourceStack(), component, player, 0)));
         } catch (CommandSyntaxException e) {
             LOGGER.error("[Satellite] Exception occurred when showing title \"{}\" to {}", title, player.getName().getString());
             LOGGER.error(e.toString());
@@ -119,7 +123,7 @@ public class Satellite implements ModInitializer {
      * */
     public static void execute(String command) {
         try {
-            SERVER.getCommands().getDispatcher().execute(command, SERVER.createCommandSourceStack());
+            Server.getCommands().getDispatcher().execute(command, Server.createCommandSourceStack());
         } catch (CommandSyntaxException e) {
             LOGGER.error("[Satellite] Exception occurred when executing command \"{}\"", command);
             LOGGER.error(e.toString());

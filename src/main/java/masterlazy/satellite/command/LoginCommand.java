@@ -11,6 +11,8 @@ import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 public class LoginCommand {
+    public static final String REGEX = "^login\\s+\\S+$";
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("login")
                 .then(argument("password", StringArgumentType.word())
@@ -18,10 +20,8 @@ public class LoginCommand {
                 ServerPlayer player = ctx.getSource().getPlayer();
                 if (player == null) return 0;
                 AuthSession session = Satellite.authManager.getSession(player);
-                if (session == null) {
-                    Satellite.LOGGER.warn("[Satellite] LoginCommand failed because session is null");
-                    return 0;
-                }
+                if (session == null) return 0;
+
                 String password = StringArgumentType.getString(ctx, "password");
                 String username = player.getName().getString();
 

@@ -26,12 +26,12 @@ public class WhitelistCommand {
                 .requires(source -> source.hasPermission(3)) // op only
             .executes(ctx -> {
                 Collection<GameProfile> targets = GameProfileArgument.getGameProfiles(ctx, "target");
-                UserWhiteList whiteList = Satellite.SERVER.getPlayerList().getWhiteList();
+                UserWhiteList whiteList = Satellite.Server.getPlayerList().getWhiteList();
                 ServerPlayer player = ctx.getSource().getPlayer();
                 for (GameProfile target : targets) {
                     if (whiteList.isWhiteListed(target)) {
                         if (player != null) {
-                            Satellite.sendMessageWithKey(player, "whitelist.safe_add.failed");
+                            Satellite.sendMessageWithKey(player, "whitelist.add.failed");
                         } else {
                             Satellite.LOGGER.error("[Satellite] {} is already in whitelist", target.getName());
                         }
@@ -46,7 +46,7 @@ public class WhitelistCommand {
                     whiteList.add(whiteListEntry);
 
                     if (player != null) {
-                        String msg = String.format(Satellite.lang("whitelist.safe_add.pwd"), target.getName()) + password;
+                        String msg = String.format(Satellite.lang("whitelist.add.pwd"), target.getName()) + password;
                         MutableComponent feedback = Component.literal(msg);
                         feedback.setStyle(feedback.getStyle()
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, password))

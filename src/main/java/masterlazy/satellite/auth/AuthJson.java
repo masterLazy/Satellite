@@ -1,11 +1,8 @@
 package masterlazy.satellite.auth;
 
 import com.google.common.io.Files;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import masterlazy.satellite.Satellite;
+import masterlazy.satellite.auth.dto.AuthEntry;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -13,7 +10,6 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -22,7 +18,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class AuthJson {
     private static final String JSON_PATH = Satellite.BASE_DIR + "auth.json";
     private static final File JSON_FILE = new File(JSON_PATH);
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static final ThreadLocal<MessageDigest> SHA256 = ThreadLocal.withInitial(() -> {
         try {
@@ -32,18 +27,30 @@ public class AuthJson {
         }
     });
 
-    private final Map<String, JsonObject> playerMap = new LinkedHashMap<>();
-    private JsonArray jsonArray = new JsonArray();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    private final Map<String, AuthEntry> entryMap = new LinkedHashMap<>();
 
     public AuthJson() {
-        read();
+        if (JSON_FILE.exists()) {
+            load();
+        } else {
+            Satellite.LOGGER.warn("[Satellite] {} not found; will create a new one.", JSON_FILE);
+        }
     }
 
     public boolean isRegistered(String username) {
         lock.readLock().lock();
         try {
-            return playerMap.containsKey(username);
+            return entryMap.containsKey(username);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public String[] getRegisteredPlayers() {
+        lock.readLock().lock();
+        try {
+            return entryMap.keySet().toArray(new String[0]);
         } finally {
             lock.readLock().unlock();
         }
@@ -52,111 +59,67 @@ public class AuthJson {
     public boolean isCorrectPassword(String username, String password) {
         lock.readLock().lock();
         try {
-            JsonObject player = playerMap.get(username);
-            if (player == null) return false;
-            String storedHash = player.get("pwd_hash").getAsString();
-            return storedHash.equals(sha256Hex(password));
+            AuthEntry entry = entryMap.get(username);
+            if (entry == null) return false;
+            return entry.pwd_hash().equals(sha256Hex(password));
         } finally {
             lock.readLock().unlock();
         }
     }
 
-    /** Add new password entry and write to file immediately */
+    /** Save AuthEntry[] to file */
     public void save(String username, String password) {
         lock.writeLock().lock();
         try {
-            JsonObject player = playerMap.get(username);
-            String hash = sha256Hex(password);
+            AuthEntry entry = new AuthEntry(username, sha256Hex(password));
+            entryMap.put(username, entry);
 
-            if (player != null) {
-                player.addProperty("name", username);
-                player.addProperty("pwd_hash", hash);
-            } else {
-                player = new JsonObject();
-                player.addProperty("name", username);
-                player.addProperty("pwd_hash", hash);
-                jsonArray.add(player);
-                playerMap.put(username, player);
+            try (BufferedWriter writer = Files.newWriter(JSON_FILE, StandardCharsets.UTF_8)) {
+                Satellite.GSON.toJson(entryMap.values(), writer);
+            } catch (Exception e) {
+                Satellite.LOGGER.error("[Satellite] Failed to write {}", JSON_FILE, e);
             }
-            persist();
         } finally {
             lock.writeLock().unlock();
         }
     }
 
-    /** Read from file */
-    public void read() {
+    /** Load AuthEntry[] from file */
+    public void load() {
         lock.writeLock().lock();
         try {
-            if (!JSON_FILE.exists()) {
-                Satellite.LOGGER.warn("[Satellite] {} not found, creating a new one.", JSON_FILE);
-                return;
-            }
+            if (!JSON_FILE.exists()) return;
 
-            JsonArray loaded;
+            AuthEntry[] loaded;
             try (BufferedReader reader = Files.newReader(JSON_FILE, StandardCharsets.UTF_8)) {
-                loaded = GSON.fromJson(reader, JsonArray.class);
+                loaded = Satellite.GSON.fromJson(reader, AuthEntry[].class);
             } catch (Exception e) {
                 Satellite.LOGGER.error("[Satellite] Failed to parse {}. Keeping current data.", JSON_FILE, e);
                 return;
             }
-
             if (loaded == null) {
                 Satellite.LOGGER.error("[Satellite] {} is empty or invalid.", JSON_FILE);
                 return;
             }
 
-            Map<String, JsonObject> newMap = new LinkedHashMap<>();
-            boolean changed = false;
-
-            for (int i = 0; i < loaded.size(); i++) {
-                JsonObject obj = loaded.get(i).getAsJsonObject();
-                String username = obj.get("name").getAsString();
-
+            Map<String, AuthEntry> newMap = new LinkedHashMap<>();
+            for (AuthEntry authEntry : loaded) {
+                String username = authEntry.name();
                 if (newMap.containsKey(username)) {
                     Satellite.LOGGER.warn("[Satellite] Duplicate username ignored: {}", username);
-                    changed = true;
                     continue;
                 }
-
-                newMap.put(username, obj);
+                newMap.put(username, authEntry);
             }
-
-            if (changed) {
-                jsonArray = new JsonArray();
-                for (JsonObject obj : newMap.values()) {
-                    jsonArray.add(obj);
-                }
-                persist();
-            } else {
-                jsonArray = loaded;
-            }
-
-            playerMap.clear();
-            playerMap.putAll(newMap);
-            Satellite.LOGGER.info("[Satellite] Loaded {} ({} users)", JSON_FILE, playerMap.size());
+            entryMap.clear();
+            entryMap.putAll(newMap);
+            Satellite.LOGGER.info("[Satellite] Loaded {} ({} users)", JSON_FILE, entryMap.size());
         } finally {
             lock.writeLock().unlock();
         }
     }
 
-    public ArrayList<String> getPlayers() {
-        lock.readLock().lock();
-        try {
-            return new ArrayList<>(playerMap.keySet());
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
-    /** Write JSON to file */
-    private void persist() {
-        try (BufferedWriter writer = Files.newWriter(JSON_FILE, StandardCharsets.UTF_8)) {
-            GSON.toJson(jsonArray, writer);
-        } catch (Exception e) {
-            Satellite.LOGGER.error("[Satellite] Failed to write {}", JSON_FILE, e);
-        }
-    }
+    // Helpers
 
     private static String sha256Hex(String str) {
         MessageDigest md = SHA256.get();

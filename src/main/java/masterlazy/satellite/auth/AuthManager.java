@@ -1,6 +1,8 @@
 package masterlazy.satellite.auth;
 
 import masterlazy.satellite.Satellite;
+import masterlazy.satellite.command.LoginCommand;
+import masterlazy.satellite.command.RegisterCommand;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.security.SecureRandom;
@@ -65,8 +67,12 @@ public class AuthManager {
         AuthSession session = getSession(player);
         if (session == null || Satellite.isSingleGame()) return false;
         if (session.isLoggedIn()) return true;
-        if (command.startsWith("login") || command.startsWith("register")) return true;
-        Satellite.sendMessageWithKey(player, "unlogged.cmd");
+        if (command.matches(LoginCommand.REGEX) || command.matches(RegisterCommand.REGEX)) return true;
+        if (command.startsWith("login") || command.startsWith("register")) {
+            Satellite.sendMessageWithKey(player, "unlogged.cmdFriendly");
+        } else {
+            Satellite.sendMessageWithKey(player, "unlogged.cmd");
+        }
         return false;
     }
 

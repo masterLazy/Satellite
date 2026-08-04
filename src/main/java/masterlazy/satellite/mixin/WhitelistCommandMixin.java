@@ -43,7 +43,7 @@ public class WhitelistCommandMixin {
                     String password = Satellite.authManager.generatePassword();
                     Satellite.authJson.save(gameProfile.getName(), password);
                     if (player != null) {
-                        String msg = String.format(Satellite.lang("whitelist.safe_add.pwd"), gameProfile.getName()) + password;
+                        String msg = String.format(Satellite.lang("whitelist.add.pwd"), gameProfile.getName()) + password;
                         MutableComponent feedback = Component.literal(msg);
                         feedback.setStyle(feedback.getStyle()
                                 .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, password))
@@ -53,7 +53,7 @@ public class WhitelistCommandMixin {
                     Satellite.LOGGER.info("[Satellite] {} is whitelisted with initial password {}", gameProfile.getName(), password);
                 } else {
                     if (player != null) {
-                        Satellite.sendMessageWithKey(player, "whitelist.safe_add.registered");
+                        Satellite.sendMessageWithKey(player, "whitelist.add.registered");
                     }
                     Satellite.LOGGER.info("[Satellite] {} is whitelisted. Auto-registration is skipped since they has registered.", gameProfile.getName());
                 }
