@@ -4,6 +4,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import masterlazy.satellite.Satellite;
+import masterlazy.satellite.auth.AuthUtil;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -26,6 +27,7 @@ public class WhitelistCommandMixin {
     @Final
     @Shadow
     private static SimpleCommandExceptionType ERROR_ALREADY_WHITELISTED;
+
     /**
      * @author masterLazy
      * @reason Add registration logic before add players to whitelist
@@ -39,9 +41,9 @@ public class WhitelistCommandMixin {
 
         for (GameProfile gameProfile : collection) {
             if (!userWhiteList.isWhiteListed(gameProfile)) {
-                if (!Satellite.authJson.isRegistered(gameProfile.getName())) {
-                    String password = Satellite.authManager.generatePassword();
-                    Satellite.authJson.save(gameProfile.getName(), password);
+                if (!Satellite.authManager.isRegistered(gameProfile.getName())) {
+                    String password = AuthUtil.getNewPassword();
+                    Satellite.authManager.savePassword(gameProfile.getName(), password);
                     if (player != null) {
                         String msg = String.format(Satellite.lang("whitelist.add.pwd"), gameProfile.getName()) + password;
                         MutableComponent feedback = Component.literal(msg);

@@ -16,7 +16,7 @@ public class ServerGamePacketListenerImplMixin {
 
 	@Inject(method = "handleChatCommand", at = @At("HEAD"), cancellable = true)
 	public void handleChatCommand(ServerboundChatCommandPacket packet, CallbackInfo ci) {
-		if (!Satellite.authManager.canExecuteCommand(player, packet.command())) {
+		if (!Satellite.authManager.handler.canExecuteCommand(player, packet.command())) {
 			ci.cancel();
 		}
 	}

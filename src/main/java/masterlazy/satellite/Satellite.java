@@ -3,11 +3,12 @@ package masterlazy.satellite;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import masterlazy.satellite.auth.AuthJson;
 import masterlazy.satellite.auth.AuthManager;
-import masterlazy.satellite.command.LoginCommand;
-import masterlazy.satellite.command.PasswordCommand;
-import masterlazy.satellite.command.RegisterCommand;
+import masterlazy.satellite.auth.command.LoginCommand;
+import masterlazy.satellite.auth.command.PasswordCommand;
+import masterlazy.satellite.auth.command.RegisterCommand;
+import masterlazy.satellite.guard.GuardManager;
+import masterlazy.satellite.session.SessionManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -35,15 +36,16 @@ import java.util.function.Function;
 
 public class Satellite implements ModInitializer {
     public static final String MOD_ID = "Satellite";
-    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static final String BASE_DIR = '.' + MOD_ID.toLowerCase() + '/';
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static MinecraftServer Server;
 
     public static LangManager langManager = new LangManager();
-    public static AuthManager authManager = new AuthManager();
-    public static AuthJson authJson = new AuthJson();
+    public static SessionManager sessionManager = new SessionManager();
+    public static AuthManager authManager = new AuthManager(BASE_DIR, sessionManager);
+    public static GuardManager guardManager = new GuardManager();
 
     @Override
     public void onInitialize() {
@@ -58,24 +60,26 @@ public class Satellite implements ModInitializer {
 
         // Commands
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-            LoginCommand.register(dispatcher);
-            PasswordCommand.register(dispatcher);
-            RegisterCommand.register(dispatcher);
-            // WhitelistCommand.register(dispatcher); // Use mixin instead
+            LoginCommand.register(dispatcher, authManager.handler);
+            PasswordCommand.register(dispatcher, authManager.handler);
+            RegisterCommand.register(dispatcher, authManager.handler);
+            // WhitelistCommand.register(dispatcher);
         });
 
         // Auth
         ServerPlayConnectionEvents.INIT.register((listener, server) -> {
-            authManager.onServerPlayConnectionInit(listener.getPlayer());
+            sessionManager.handler.onServerPlayConnectionInit(listener.getPlayer());
         });
         ServerPlayConnectionEvents.JOIN.register((listener, sender, server) -> {
-            authManager.onServerPlayConnectionJoin(listener.getPlayer());
+            authManager.handler.onServerPlayConnectionJoin(listener.getPlayer());
         });
         ServerPlayConnectionEvents.DISCONNECT.register((listener, server)-> {
-            authManager.onServerPlayConnectionDisconnect(listener.getPlayer());
+            sessionManager.handler.onServerPlayConnectionDisconnect(listener.getPlayer());
         });
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
-            return authManager.onServerMessageAllowChatMessage(sender.connection.getPlayer());
+            boolean allow;
+            allow = authManager.handler.onServerMessageAllowChatMessage(sender.connection.getPlayer());
+            return allow;
         });
     }
 
@@ -131,8 +135,6 @@ public class Satellite implements ModInitializer {
     }
 
     public static void playNotifySound(ServerPlayer player) {
-//        Satellite.execute(String.format("playsound block.note_block.pling master %s %f %f %f 1 0",
-//                player.getName().getString(), player.getX(), player.getY(), player.getZ()));
         player.connection.send(new ClientboundSoundPacket(
                 SoundEvents.NOTE_BLOCK_PLING,
                 SoundSource.MASTER,

@@ -1,106 +1,43 @@
 package masterlazy.satellite.auth;
 
-import masterlazy.satellite.Satellite;
-import masterlazy.satellite.command.LoginCommand;
-import masterlazy.satellite.command.RegisterCommand;
+import masterlazy.satellite.auth.model.RegisterEntry;
+import masterlazy.satellite.auth.model.RegisterJson;
+import masterlazy.satellite.session.SessionManager;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.security.SecureRandom;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import org.jetbrains.annotations.Nullable;
-
 public class AuthManager {
-    private final HashMap<UUID, AuthSession> sessions = new HashMap<>();
-    private final SecureRandom random = new SecureRandom();
+    private final RegisterJson registerJson;
 
-    // Event handlers
+    public final AuthHandler handler;
 
-    public void onServerPlayConnectionInit(ServerPlayer player) {
-        String username = player.getName().getString();
-        register(player);
-        AuthSession session = getSession(player);
-        if (session == null) {
-            Satellite.LOGGER.error("[Satellite] Failed to register session for {}", username);
-        }
+    public AuthManager(String baseDir, SessionManager sessionManager) {
+        registerJson = new RegisterJson(baseDir + "register.json");
+        handler = new AuthHandler(this, sessionManager);
     }
 
-    public void onServerPlayConnectionJoin(ServerPlayer player) {
-        String username = player.getName().getString();
-        AuthSession session = getSession(player);
-        if (session == null || Satellite.isSingleGame()) return;
-        session.setLoggedIn(false);
-
-        Satellite.sendMessageWithKey(player, "connect.msg");
-        if (Satellite.authJson.isRegistered(username)) {
-            Satellite.sendMessageWithKey(player, "connect.oldUser");
-        } else {
-            Satellite.sendMessageWithKey(player, "connect.newUser");
-        }
-        // NOTE: Don't use title command here -> failed to find player
-        String title = String.format(Satellite.lang("connect.title"), username);
-        Satellite.showTitle(player, title);
+    public boolean isRegistered(ServerPlayer player) {
+        return isRegistered(player.getName().getString());
     }
 
-    public void onServerPlayConnectionDisconnect(ServerPlayer player) {
-        AuthSession session = getSession(player);
-        if (session == null || Satellite.isSingleGame()) return;
-        // Revert the player's profile
-        if (!session.isLoggedIn()) { // NOTE: Don't remove this judgement
-            session.setLoggedIn(true);
-        }
-        unregister(player);
+    public boolean isRegistered(String username) {
+        return registerJson.hasEntry(username);
     }
 
-    public boolean onServerMessageAllowChatMessage(ServerPlayer player) {
-        AuthSession session = getSession(player);
-        if (session == null || Satellite.isSingleGame()) return false;
-        if (session.isLoggedIn()) return true;
-        Satellite.sendMessageWithKey(player, "unlogged.msg");
-        return false;
+    public String[] getRegisteredPlayerNames() {
+        return registerJson.getRegisteredNames();
     }
 
-    public boolean canExecuteCommand(ServerPlayer player, String command) {
-        AuthSession session = getSession(player);
-        if (session == null || Satellite.isSingleGame()) return false;
-        if (session.isLoggedIn()) return true;
-        if (command.matches(LoginCommand.REGEX) || command.matches(RegisterCommand.REGEX)) return true;
-        if (command.startsWith("login") || command.startsWith("register")) {
-            Satellite.sendMessageWithKey(player, "unlogged.cmdFriendly");
-        } else {
-            Satellite.sendMessageWithKey(player, "unlogged.cmd");
-        }
-        return false;
+    public void reloadJson() {
+        registerJson.load();
     }
 
-    // Methods
-
-    private void register(ServerPlayer player) {
-        UUID uuid = player.getUUID();
-        sessions.put(uuid, new AuthSession(player));
+    public void savePassword(String username, String password) {
+        registerJson.putAndSave(new RegisterEntry(username, AuthUtil.getHash(password)));
     }
 
-    private void unregister(ServerPlayer player) {
-        UUID uuid = player.getUUID();
-        sessions.remove(uuid);
-    }
-
-    // Helpers
-
-    public String generatePassword() {
-        final String CHAR = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-        final int LENGTH = 8;
-        return IntStream.range(0, LENGTH)
-                .mapToObj(i -> String.valueOf(CHAR.charAt(random.nextInt(CHAR.length()))))
-                .collect(Collectors.joining());
-    }
-
-    @Nullable
-    public AuthSession getSession(ServerPlayer player) {
-        UUID uuid = player.getUUID();
-        return sessions.get(uuid);
+    public boolean isCorrectPassword(String username, String password) {
+        RegisterEntry registerEntry = registerJson.getEntry(username);
+        if (registerEntry == null) return false;
+        return registerEntry.pwd_hash().equals(AuthUtil.getHash(password));
     }
 }

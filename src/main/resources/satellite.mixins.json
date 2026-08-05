@@ -8,6 +8,7 @@
     "WhitelistCommandMixin"
   ],
   "server": [
+    "GameProfileCacheMixin",
     "DedicatedServerMixin"
   ],
   "injectors": {

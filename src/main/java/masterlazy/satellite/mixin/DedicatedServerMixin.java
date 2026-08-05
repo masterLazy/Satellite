@@ -10,12 +10,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(DedicatedServer.class)
 public class DedicatedServerMixin {
     @Unique
-    private boolean firstCall = true; // We just want to redirect the first call
+    private boolean satellite$firstCall = true; // We just want to redirect the first call
 
     /** Redirect the "SERVER IS RUNNING IN OFFLINE/INSECURE MODE" warning */
     @Redirect(method = "initServer", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/dedicated/DedicatedServer;usesAuthentication()Z"))
     boolean usesAuthentication(DedicatedServer instance) {
-        if (!firstCall) return instance.usesAuthentication();
+        if (!satellite$firstCall) return instance.usesAuthentication();
         if (instance.usesAuthentication()) {
             Satellite.LOGGER.warn("Server is running in ONLINE mode with Satellite's authentication system");
         } else {
@@ -25,7 +25,7 @@ public class DedicatedServerMixin {
             }
             Satellite.LOGGER.warn("Server is running in OFFLINE mode with Satellite's authentication system");
         }
-        firstCall = false;
+        satellite$firstCall = false;
         return true;
     }
 }
