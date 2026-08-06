@@ -1,5 +1,5 @@
 <h1>Satellite</h1>
 
-<img src="D:\MyRepos\Satellite\src\main\resources\assets\satellite\icon.png" style="height:256px;" />
+<center><img src="src\main\resources\assets\satellite\icon.png" style="height:200px;" /></center>
 
 Powerful Minecraft server management toolkit.
