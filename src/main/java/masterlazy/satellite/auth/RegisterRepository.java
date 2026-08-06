@@ -1,7 +1,8 @@
-package masterlazy.satellite.auth.model;
+package masterlazy.satellite.auth;
 
 import com.google.common.io.Files;
 import masterlazy.satellite.Satellite;
+import masterlazy.satellite.auth.model.RegisterEntry;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
@@ -13,27 +14,19 @@ import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class RegisterJson {
+public class RegisterRepository {
+    private static final String FILE_NAME = "register.json";
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final Map<String, RegisterEntry> entryMap = new LinkedHashMap<>();
     private final File jsonFile;
 
-    public RegisterJson(String filePath) {
-        jsonFile = new File(filePath);
+    public RegisterRepository(String baseDir) {
+        jsonFile = new File(baseDir + FILE_NAME);
         if (jsonFile.exists()) {
             load();
         } else {
+            save();
             Satellite.LOGGER.warn("[Satellite] {} not found; creating a new one.", jsonFile);
-            lock.writeLock().lock();
-            try {
-                try (BufferedWriter writer = Files.newWriter(jsonFile, StandardCharsets.UTF_8)) {
-                    Satellite.GSON.toJson(entryMap.values(), writer);
-                } catch (Exception e) {
-                    Satellite.LOGGER.error("[Satellite] Failed to write {}", jsonFile, e);
-                }
-            } finally {
-                lock.writeLock().unlock();
-            }
         }
     }
 
@@ -56,7 +49,17 @@ public class RegisterJson {
         }
     }
 
-    public String[] getRegisteredNames() {
+    public void putEntry(RegisterEntry registerEntry) {
+        lock.writeLock().lock();
+        try {
+            entryMap.put(registerEntry.name(),registerEntry);
+
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    public String[] getEntryNames() {
         lock.readLock().lock();
         try {
             return entryMap.keySet().toArray(new String[0]);
@@ -65,17 +68,16 @@ public class RegisterJson {
         }
     }
 
-    public void putAndSave(RegisterEntry registerEntry) {
-        lock.writeLock().lock();
+    public void save() {
+        lock.readLock().lock();
         try {
-            entryMap.put(registerEntry.name(),registerEntry);
             try (BufferedWriter writer = Files.newWriter(jsonFile, StandardCharsets.UTF_8)) {
                 Satellite.GSON.toJson(entryMap.values(), writer);
             } catch (Exception e) {
                 Satellite.LOGGER.error("[Satellite] Failed to write {}", jsonFile, e);
             }
         } finally {
-            lock.writeLock().unlock();
+            lock.readLock().unlock();
         }
     }
 

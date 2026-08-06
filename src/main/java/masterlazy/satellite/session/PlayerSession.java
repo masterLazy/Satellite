@@ -1,4 +1,4 @@
-package masterlazy.satellite.session.model;
+package masterlazy.satellite.session;
 
 import masterlazy.satellite.Satellite;
 import net.minecraft.server.level.ServerPlayer;
@@ -9,7 +9,6 @@ public class PlayerSession {
     private final ServerPlayer player;
 
     private boolean loggedIn;
-
     private boolean froze = false;
     private GameType gameMode;
     private float walkingSpeed, flyingSpeed;

@@ -3,16 +3,11 @@ package masterlazy.satellite.mixin;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
-import masterlazy.satellite.Satellite;
-import masterlazy.satellite.auth.AuthUtil;
+import masterlazy.satellite.SatelliteEvents;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.commands.WhitelistCommand;
 
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.UserWhiteList;
 import net.minecraft.server.players.UserWhiteListEntry;
 import org.spongepowered.asm.mixin.Final;
@@ -37,35 +32,14 @@ public class WhitelistCommandMixin {
         UserWhiteList userWhiteList = ctx.getServer().getPlayerList().getWhiteList();
         int i = 0;
 
-        ServerPlayer player = ctx.getPlayer();
-
         for (GameProfile gameProfile : collection) {
-            if (!userWhiteList.isWhiteListed(gameProfile)) {
-                if (!Satellite.authManager.isRegistered(gameProfile.getName())) {
-                    String password = AuthUtil.getNewPassword();
-                    Satellite.authManager.savePassword(gameProfile.getName(), password);
-                    if (player != null) {
-                        String msg = String.format(Satellite.lang("whitelist.add.pwd"), gameProfile.getName()) + password;
-                        MutableComponent feedback = Component.literal(msg);
-                        feedback.setStyle(feedback.getStyle()
-                                .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, password))
-                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(Satellite.lang(("pwd.copy"))))));
-                        Satellite.sendMessage(player, feedback);
-                    }
-                    Satellite.LOGGER.info("[Satellite] {} is whitelisted with initial password {}", gameProfile.getName(), password);
-                } else {
-                    if (player != null) {
-                        Satellite.sendMessageWithKey(player, "whitelist.add.registered");
-                    }
-                    Satellite.LOGGER.info("[Satellite] {} is whitelisted. Auto-registration is skipped since they has registered.", gameProfile.getName());
-                }
-
-                // Add to whitelist
-                UserWhiteListEntry userWhiteListEntry = new UserWhiteListEntry(gameProfile);
-                userWhiteList.add(userWhiteListEntry);
-                ctx.sendSuccess(() -> Component.translatable("commands.whitelist.add.success", Component.literal(gameProfile.getName())), true);
-                i++;
-            }
+            if (userWhiteList.isWhiteListed(gameProfile)) continue;
+            SatelliteEvents.ADDING_WHITELIST.invoker().addingWhitelist(ctx, gameProfile);
+            // Add to whitelist
+            UserWhiteListEntry userWhiteListEntry = new UserWhiteListEntry(gameProfile);
+            userWhiteList.add(userWhiteListEntry);
+            ctx.sendSuccess(() -> Component.translatable("commands.whitelist.add.success", Component.literal(gameProfile.getName())), true);
+            i++;
         }
 
         if (i == 0) {

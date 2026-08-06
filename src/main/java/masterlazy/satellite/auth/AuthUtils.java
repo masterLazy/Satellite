@@ -7,7 +7,7 @@ import java.security.SecureRandom;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class AuthUtil {
+public class AuthUtils {
     private static final SecureRandom random = new SecureRandom();
     private static final ThreadLocal<MessageDigest> SHA256 = ThreadLocal.withInitial(() -> {
         try {

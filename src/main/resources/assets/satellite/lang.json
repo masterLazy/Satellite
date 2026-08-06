@@ -20,7 +20,7 @@
   "pwd.change.success": "§e密码更改成功",
   "pwd.reset.unregistered": "§c该玩家尚未注册",
   "pwd.reset.success": "§e已重置%s的密码为:",
-  "pwd.reload.success": "§e密码已重新加载",
+  "pwd.reload.success": "§e注册信息已重新加载",
   "pwd.list.header": "§e共有%d名已注册玩家\n§f",
   "pwd.list.warn": "§e共有%d名未注册玩家在白名单（或管理员名单）中\n§f",
   "pwd.copy": "单击拷贝密码到剪贴板",

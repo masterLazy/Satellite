@@ -1,6 +1,6 @@
 package masterlazy.satellite.mixin;
 
-import masterlazy.satellite.Satellite;
+import masterlazy.satellite.SatelliteEvents;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -16,7 +16,8 @@ public class ServerGamePacketListenerImplMixin {
 
 	@Inject(method = "handleChatCommand", at = @At("HEAD"), cancellable = true)
 	public void handleChatCommand(ServerboundChatCommandPacket packet, CallbackInfo ci) {
-		if (!Satellite.authManager.handler.canExecuteCommand(player, packet.command())) {
+		if (!SatelliteEvents.ALLOW_EXECUTE_COMMAND.invoker().allowExecuteCommand(player, packet)) {
+
 			ci.cancel();
 		}
 	}

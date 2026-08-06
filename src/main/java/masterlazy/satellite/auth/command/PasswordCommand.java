@@ -2,7 +2,7 @@ package masterlazy.satellite.auth.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import masterlazy.satellite.auth.AuthHandler;
+import masterlazy.satellite.auth.handler.CommandHandler;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -10,7 +10,7 @@ import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 public class PasswordCommand {
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, AuthHandler handler) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandHandler handler) {
         dispatcher.register(literal("password")
                 .then(literal("change")
                 .then(argument("oldPassword", StringArgumentType.word())

@@ -1,10 +1,14 @@
-package masterlazy.satellite.auth;
+package masterlazy.satellite.auth.handler;
 
 import masterlazy.satellite.Satellite;
+import masterlazy.satellite.auth.AuthService;
+import masterlazy.satellite.auth.AuthUtils;
 import masterlazy.satellite.auth.command.LoginCommand;
+import masterlazy.satellite.auth.command.PasswordCommand;
 import masterlazy.satellite.auth.command.RegisterCommand;
-import masterlazy.satellite.session.SessionManager;
-import masterlazy.satellite.session.model.PlayerSession;
+import masterlazy.satellite.session.SessionService;
+import masterlazy.satellite.session.PlayerSession;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -16,71 +20,33 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
-public class AuthHandler {
-    private final AuthManager authManager;
-    private final SessionManager sessionManager;
+public class CommandHandler {
+    private final AuthService service;
+    private final SessionService sessionService;
 
-    public AuthHandler(AuthManager authManager, SessionManager sessionManager) {
-        this.authManager = authManager;
-        this.sessionManager = sessionManager;
+    public CommandHandler(AuthService service, SessionService sessionService) {
+        this.service = service;
+        this.sessionService = sessionService;
     }
 
-    public void onServerPlayConnectionJoin(ServerPlayer player) {
-        if (Satellite.isSingleGame()) return;
-        PlayerSession session = sessionManager.getSession(player);
-        if (session == null) return;
-
-        session.setLoggedIn(false);
-        session.freezePlayer();
-
-        Satellite.sendMessageWithKey(player, "connect.msg");
-        if (authManager.isRegistered(player)) {
-            Satellite.sendMessageWithKey(player, "connect.oldUser");
-        } else {
-            Satellite.sendMessageWithKey(player, "connect.newUser");
-        }
-        // NOTE: Don't use title command here -> failed to find player
-        String title = String.format(Satellite.lang("connect.title"), player.getName().getString());
-        Satellite.showTitle(player, title);
+    public void register() {
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            LoginCommand.register(dispatcher, this);
+            PasswordCommand.register(dispatcher, this);
+            RegisterCommand.register(dispatcher, this);
+        });
     }
-
-    public boolean onServerMessageAllowChatMessage(ServerPlayer player) {
-        if (Satellite.isSingleGame()) return true;
-        PlayerSession session = sessionManager.getSession(player);
-        if (session == null) return false;
-        if (session.isLoggedIn()) return true;
-
-        Satellite.sendMessageWithKey(player, "unlogged.msg");
-        return false;
-    }
-
-    public boolean canExecuteCommand(ServerPlayer player, String command) {
-        if (Satellite.isSingleGame()) return true;
-        PlayerSession session = sessionManager.getSession(player);
-        if (session == null) return false;
-        if (session.isLoggedIn()) return true;
-
-        if (command.matches(LoginCommand.REGEX) || command.matches(RegisterCommand.REGEX)) return true;
-        if (command.startsWith("login") || command.startsWith("register")) {
-            Satellite.sendMessageWithKey(player, "unlogged.cmdFriendly");
-        } else {
-            Satellite.sendMessageWithKey(player, "unlogged.cmd");
-        }
-        return false;
-    }
-
-    // Commands
 
     public int login(ServerPlayer player, String password) {
-        PlayerSession session = sessionManager.getSession(player);
+        PlayerSession session = sessionService.getSession(player);
         if (session == null) return 0;
         String username = player.getName().getString();
 
         if (session.isLoggedIn()) {
             Satellite.sendMessageWithKey(player, "login.logged");
-        } else if (!authManager.isRegistered(player)) {
+        } else if (!service.isRegistered(player)) {
             Satellite.sendMessageWithKey(player, "login.unregistered");
-        } else if (!authManager.isCorrectPassword(username, password)) {
+        } else if (!service.isCorrectPassword(username, password)) {
             Satellite.sendMessageWithKey(player, "login.incorrectPwd");
         } else {
             session.setLoggedIn(true);
@@ -94,18 +60,18 @@ public class AuthHandler {
     }
 
     public int register(ServerPlayer player, String password, String confirmPassword) {
-        PlayerSession session = sessionManager.getSession(player);
+        PlayerSession session = sessionService.getSession(player);
         if (session == null) return 0;
         String username = player.getName().getString();
 
         if (session.isLoggedIn()) {
             Satellite.sendMessageWithKey(player, "reg.logged");
-        } else if (authManager.isRegistered(username)) {
+        } else if (service.isRegistered(username)) {
             Satellite.sendMessageWithKey(player, "reg.registered");
         } else if (!password.equals(confirmPassword)) {
             Satellite.sendMessageWithKey(player, "reg.pwdNotMatch");
         } else {
-            authManager.savePassword(username, password);
+            service.savePassword(username, password);
             session.setLoggedIn(true);
             session.restorePlayer();
 
@@ -120,12 +86,12 @@ public class AuthHandler {
     public int changePassword(ServerPlayer player, String oldPassword, String newPassword, String confirmPassword) {
         String username = player.getName().getString();
 
-        if (!authManager.isCorrectPassword(player.getName().getString(), oldPassword)) {
+        if (!service.isCorrectPassword(player.getName().getString(), oldPassword)) {
             Satellite.sendMessageWithKey(player, "pwd.change.incorrectPwd");
         } else if (!newPassword.equals(confirmPassword)) {
             Satellite.sendMessageWithKey(player, "pwd.change.pwdNotMatch");
         } else {
-            authManager.savePassword(username, newPassword);
+            service.savePassword(username, newPassword);
             Satellite.sendMessageWithKey(player, "pwd.change.success");
             Satellite.LOGGER.info("[Satellite] {} changed their password.", username);
             Satellite.playNotifySound(player);
@@ -134,7 +100,7 @@ public class AuthHandler {
     }
 
     public int resetPassword(ServerPlayer player, String target) {
-        if (!Satellite.authManager.isRegistered(target)) {
+        if (!service.isRegistered(target)) {
             if (player != null) {
                 Satellite.sendMessageWithKey(player, "pwd.reset.unregistered");
             } else {
@@ -142,8 +108,8 @@ public class AuthHandler {
             }
             return 1;
         }
-        String password = AuthUtil.getNewPassword();
-        Satellite.authManager.savePassword(target, password);
+        String password = AuthUtils.getNewPassword();
+        service.savePassword(target, password);
         if (player != null) {
             MutableComponent feedback = Component.literal(Satellite.lang("pwd.reset.success").replace("%s", target) + password);
             feedback.setStyle(feedback.getStyle()
@@ -156,7 +122,7 @@ public class AuthHandler {
     }
 
     public int reloadPassword(ServerPlayer player) {
-        Satellite.authManager.reloadJson();
+        service.reloadRepository();
         if (player != null) {
             Satellite.sendMessageWithKey(player, "pwd.reload.success");
         }
@@ -165,10 +131,10 @@ public class AuthHandler {
 
     public int listPassword(ServerPlayer player) {
         StringBuilder msg = new StringBuilder();
-        String[] registeredPlayers = Satellite.authManager.getRegisteredPlayerNames();
+        String[] registeredPlayers = service.getRegisteredNames();
 
         // List all registered players
-        String registeredListStr = String.join(",", registeredPlayers);
+        String registeredListStr = String.join(", ", registeredPlayers);
         msg .append(String.format(Satellite.lang("pwd.list.header"), registeredPlayers.length))
                 .append(registeredListStr);
 
@@ -179,10 +145,10 @@ public class AuthHandler {
                         Arrays.stream(playerList.getOpNames())
                 )
                 .distinct()
-                .filter(name -> !Satellite.authManager.isRegistered(name))
+                .filter(name -> !service.isRegistered(name))
                 .toList();
         if (!warnList.isEmpty()) {
-            String warnListStr = String.join(",", warnList);
+            String warnListStr = String.join(", ", warnList);
             msg .append('\n')
                     .append(String.format(Satellite.lang("pwd.list.warn"), warnList.size()))
                     .append(warnListStr);

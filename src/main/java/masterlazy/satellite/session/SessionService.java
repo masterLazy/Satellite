@@ -1,6 +1,6 @@
 package masterlazy.satellite.session;
 
-import masterlazy.satellite.session.model.PlayerSession;
+import masterlazy.satellite.session.handler.EventHandler;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
@@ -9,11 +9,19 @@ import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class SessionManager {
+public class SessionService {
+    private final EventHandler eventHandler;
+
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final HashMap<UUID, PlayerSession> sessions = new HashMap<>();
 
-    public final SessionHandler handler = new SessionHandler(this);
+    public SessionService() {
+        eventHandler = new EventHandler(this);
+    }
+
+    public void onInitialize() {
+        eventHandler.register();
+    }
 
     @Nullable
     public PlayerSession getSession(ServerPlayer player) {
