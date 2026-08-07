@@ -72,7 +72,7 @@ public class EventHandler {
         if (session.isLoggedIn()) return true;
 
         if (command.matches(LoginCommand.REGEX) || command.matches(RegisterCommand.REGEX)) return true;
-        if (command.startsWith("login") || command.startsWith("registerSession")) {
+        if (command.startsWith("login") || command.startsWith("register")) {
             Satellite.sendMessageWithKey(player, "unlogged.cmdFriendly");
         } else {
             Satellite.sendMessageWithKey(player, "unlogged.cmd");

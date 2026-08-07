@@ -13,15 +13,12 @@ public class RegisterCommand {
     public static final String REGEX = "^register \\S+ \\S+$";
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandHandler handler) {
-        dispatcher.register(literal("registerSession")
-                .then(argument("newPassword", StringArgumentType.word())
-                .then(argument("confirmPassword", StringArgumentType.word())
-        .executes(ctx -> {
+        dispatcher.register(literal("register").then(argument("newPassword", StringArgumentType.word()).then(argument("confirmPassword", StringArgumentType.word()).executes(ctx -> {
             ServerPlayer player = ctx.getSource().getPlayer();
             if (player == null) return 0;
             String password = StringArgumentType.getString(ctx, "newPassword");
             String confirmPassword = StringArgumentType.getString(ctx, "confirmPassword");
-            return handler.register(player,password,confirmPassword);
+            return handler.register(player, password, confirmPassword);
         }))));
     }
 }

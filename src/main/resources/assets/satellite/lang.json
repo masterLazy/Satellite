@@ -5,32 +5,55 @@
   "connect.title": "§6欢迎，%s",
 
   "login.logged": "§e你已经登录了",
-  "login.unregistered": "§c你尚未注册！ 请使用 /register 注册",
+  "login.unregistered": "§c你尚未注册！请使用 /register 注册",
   "login.incorrectPwd": "§c密码不匹配，请重试",
   "login.success": "§e%s登录成功",
-  "login.local": "§e正在跳过本地玩家%s的登录",
+  "login.local": "§e正在跳过本地玩家 §f%s 的登录",
 
   "reg.logged": "§e你已经注册了",
   "reg.registered": "§c你已经注册了！请使用 /login 登录",
-  "reg.pwdNotMatch": "§c两次输入的密码不一致， 请重试",
+  "reg.pwdNotMatch": "§c两次输入的密码不一致，请重试",
   "reg.success": "§e注册成功",
 
   "pwd.change.incorrectPwd": "§c旧密码不匹配，请重试",
   "pwd.change.pwdNotMatch": "§c两次输入的密码不一致， 请重试",
   "pwd.change.success": "§e密码更改成功",
   "pwd.reset.unregistered": "§c该玩家尚未注册",
-  "pwd.reset.success": "§e已重置%s的密码为:",
+  "pwd.reset.success": "§e已重置 §f%s §e的密码为：§f",
   "pwd.reload.success": "§e注册信息已重新加载",
-  "pwd.list.header": "§e共有%d名已注册玩家\n§f",
-  "pwd.list.warn": "§e共有%d名未注册玩家在白名单（或管理员名单）中\n§f",
+  "pwd.list.header": "§e共有 §f%d §e名已注册玩家\n§f",
+  "pwd.list.warn": "§e共有 §f%d §e名未注册玩家在白名单（或管理员名单）中\n§f",
   "pwd.copy": "单击拷贝密码到剪贴板",
 
   "unlogged.msg": "§e请先登录再发送信息",
   "unlogged.cmd": "§e请先登录再执行命令",
-  "unlogged.cmdFriendly": "§e/login 或 /register 格式有误\n  §f用法:\n  /login 密码\n  /register 密码 确认密码",
+  "unlogged.cmdFriendly": "§e/login 或 /register 格式有误\n  §f用法：\n  /login 密码\n  /register 密码 确认密码",
   "unlogged.title": "§e请先登录再进行游戏！",
 
   "whitelist.add.failed": "§e玩家已在白名单内",
   "whitelist.add.registered": "§e该玩家已注册，跳过自动注册",
-  "whitelist.add.pwd": "§e已为%s注册，其初始密码为："
+  "whitelist.add.pwd": "§e已为 §f%s §e注册，其初始密码为：",
+
+  "guard.cmd.hit": "§e该命令被规则 §f%s §e拦截\n  §f描述：%s",
+  "guard.cmd.deny": "  你不能执行该命令",
+  "guard.cmd.confirm": "  请再次输入该命令以确认执行",
+  "guard.cmd.requestOp": "  请等待管理员批准方可执行",
+
+  "guard.rule.dupId": "§c已存在相同的规则 ID",
+  "guard.rule.unkId": "§c给定的规则 ID 不存在",
+  "guard.rule.add": "§e规则添加成功。使用 /guard add condition 来为其添加触发条件",
+  "guard.rule.remove": "§e已移除规则",
+  "guard.rule.removeFailed": "§c规则移除失败",
+  "guard.rule.empty": "§e规则列表为空",
+  "guard.rule.details": "§e规则 §f%s §e的详细信息：\n  §f描述：%s",
+
+  "guard.condition.emptyValue": "§c条件不能为空",
+  "guard.condition.targetEmpty": "$c目标规则没有条件",
+  "guard.condition.outOfRange": "$c条件编号超出了索引范围（%d-%d）",
+  "guard.condition.add": "§e已添加触发条件",
+  "guard.condition.remove": "§e已移除指定的条件",
+  "guard.condition.empty": "§e条件列表为空",
+
+  "misc.empty": "无",
+  "misc.unkArg": "§c无法解析参数 %s"
 }

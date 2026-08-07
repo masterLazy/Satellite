@@ -39,7 +39,7 @@ public class Satellite implements ModInitializer {
 
     private final SessionService sessionService = new SessionService();
     private final AuthService authService = new AuthService(BASE_DIR, sessionService);
-    private final GuardService guardService = new GuardService();
+    private final GuardService guardService = new GuardService(BASE_DIR);
 
     @Override
     public void onInitialize() {
@@ -65,8 +65,7 @@ public class Satellite implements ModInitializer {
         try {
             Server.getCommands().getDispatcher().execute(command, Server.createCommandSourceStack());
         } catch (CommandSyntaxException e) {
-            LOGGER.error("[Satellite] Exception occurred when executing command \"{}\"", command);
-            LOGGER.error(e.toString());
+            LOGGER.error("[Satellite] Exception occurred when executing command \"{}\"", command, e);
         }
     }
 
@@ -99,8 +98,7 @@ public class Satellite implements ModInitializer {
         try {
             player.connection.send(f.apply(ComponentUtils.updateForEntity(Server.createCommandSourceStack(), component, player, 0)));
         } catch (CommandSyntaxException e) {
-            LOGGER.error("[Satellite] Exception occurred when showing title \"{}\" to {}", title, player.getName().getString());
-            LOGGER.error(e.toString());
+            LOGGER.error("[Satellite] Exception occurred when showing title \"{}\" to {}", title, player.getName().getString(), e);
         }
     }
 

@@ -17,7 +17,6 @@ public class ServerGamePacketListenerImplMixin {
 	@Inject(method = "handleChatCommand", at = @At("HEAD"), cancellable = true)
 	public void handleChatCommand(ServerboundChatCommandPacket packet, CallbackInfo ci) {
 		if (!SatelliteEvents.ALLOW_EXECUTE_COMMAND.invoker().allowExecuteCommand(player, packet)) {
-
 			ci.cancel();
 		}
 	}

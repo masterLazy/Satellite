@@ -32,7 +32,7 @@ public class CommandHandler {
     public void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             LoginCommand.register(dispatcher, this);
-            PasswordCommand.register(dispatcher, this);
+            PasswordCommand.register(dispatcher, this, service);
             RegisterCommand.register(dispatcher, this);
         });
     }

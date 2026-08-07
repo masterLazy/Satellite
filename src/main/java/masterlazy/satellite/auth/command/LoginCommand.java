@@ -13,13 +13,11 @@ public class LoginCommand {
     public static final String REGEX = "^login \\S+$";
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandHandler handler) {
-        dispatcher.register(literal("login")
-                .then(argument("password", StringArgumentType.word())
-            .executes(ctx -> {
-                ServerPlayer player = ctx.getSource().getPlayer();
-                if (player == null) return 0;
-                String password = StringArgumentType.getString(ctx, "password");
-                return handler.login(player, password);
-            })));
+        dispatcher.register(literal("login").then(argument("password", StringArgumentType.word()).executes(ctx -> {
+            ServerPlayer player = ctx.getSource().getPlayer();
+            if (player == null) return 0;
+            String password = StringArgumentType.getString(ctx, "password");
+            return handler.login(player, password);
+        })));
     }
 }

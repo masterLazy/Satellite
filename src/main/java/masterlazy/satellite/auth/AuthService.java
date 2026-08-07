@@ -8,18 +8,18 @@ import net.minecraft.server.level.ServerPlayer;
 
 public class AuthService {
     private final RegisterRepository registerRepository;
-    private final EventHandler eventHandler;
     private final CommandHandler commandHandler;
+    private final EventHandler eventHandler;
 
     public AuthService(String baseDir, SessionService sessionService) {
         registerRepository = new RegisterRepository(baseDir);
-        eventHandler = new EventHandler(this, sessionService);
         commandHandler = new CommandHandler(this, sessionService);
+        eventHandler = new EventHandler(this, sessionService);
     }
 
     public void onInitialize() {
-        eventHandler.register();
         commandHandler.register();
+        eventHandler.register();
     }
 
     public boolean isRegistered(ServerPlayer player) {

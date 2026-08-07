@@ -33,7 +33,7 @@ public class RegisterRepository {
     @Nullable
     public RegisterEntry getEntry(String username) {
         lock.readLock().lock();
-        try{
+        try {
             return entryMap.get(username);
         } finally {
             lock.readLock().unlock();
@@ -42,7 +42,7 @@ public class RegisterRepository {
 
     public boolean hasEntry(String username) {
         lock.readLock().lock();
-        try{
+        try {
             return entryMap.containsKey(username);
         } finally {
             lock.readLock().unlock();
@@ -52,8 +52,7 @@ public class RegisterRepository {
     public void putEntry(RegisterEntry registerEntry) {
         lock.writeLock().lock();
         try {
-            entryMap.put(registerEntry.name(),registerEntry);
-
+            entryMap.put(registerEntry.name(), registerEntry);
         } finally {
             lock.writeLock().unlock();
         }
@@ -102,6 +101,17 @@ public class RegisterRepository {
                 return;
             }
 
+            boolean hasNull = false;
+            for (RegisterEntry entry : loaded) {
+                if (hasNullField(entry)) {
+                    hasNull = true;
+                    break;
+                }
+            }
+            if (hasNull) {
+                Satellite.LOGGER.warn("[Satellite] One or more registrations are incomplete in {}.", jsonFile);
+            }
+
             Map<String, RegisterEntry> newMap = new LinkedHashMap<>();
             for (RegisterEntry registerEntry : loaded) {
                 String username = registerEntry.name();
@@ -117,5 +127,11 @@ public class RegisterRepository {
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    public boolean hasNullField(RegisterEntry entry) {
+        if (entry.name() == null) return true;
+        if (entry.pwd_hash() == null) return true;
+        return false;
     }
 }
