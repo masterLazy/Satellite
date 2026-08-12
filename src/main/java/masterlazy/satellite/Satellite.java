@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 public class Satellite implements ModInitializer {
@@ -33,6 +35,7 @@ public class Satellite implements ModInitializer {
     public static final String BASE_DIR = '.' + MOD_ID.toLowerCase() + '/';
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    public static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
     public static MinecraftServer Server;
     public static LangManager langManager = new LangManager();
@@ -85,6 +88,10 @@ public class Satellite implements ModInitializer {
 
     public static void sendMessageWithKey(ServerPlayer player, String key) {
         sendMessage(player, lang(key));
+    }
+
+    public static void sendMessageWithKey(ServerPlayer player, String key, Object ...args) {
+        sendMessage(player, String.format(lang(key), args));
     }
 
     public static void sendGlobalMessage(String text) {

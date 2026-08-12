@@ -1,4 +1,6 @@
 {
+  "================== AUTH MODULE ==================" :  "",
+
   "connect.msg": "§e欢迎来到服务器！游玩前请先登录",
   "connect.newUser": "§b你尚未注册，请用 /register 为你的用户名注册",
   "connect.oldUser": "§b你已注册，请用 /login 登录你的用户名",
@@ -8,7 +10,7 @@
   "login.unregistered": "§c你尚未注册！请使用 /register 注册",
   "login.incorrectPwd": "§c密码不匹配，请重试",
   "login.success": "§e%s登录成功",
-  "login.local": "§e正在跳过本地玩家 §f%s 的登录",
+  "login.local": "§e正在跳过本地玩家%s的登录",
 
   "reg.logged": "§e你已经注册了",
   "reg.registered": "§c你已经注册了！请使用 /login 登录",
@@ -19,41 +21,71 @@
   "pwd.change.pwdNotMatch": "§c两次输入的密码不一致， 请重试",
   "pwd.change.success": "§e密码更改成功",
   "pwd.reset.unregistered": "§c该玩家尚未注册",
-  "pwd.reset.success": "§e已重置 §f%s §e的密码为：§f",
+  "pwd.reset.success": "§e已重置%s的密码为：%s",
   "pwd.reload.success": "§e注册信息已重新加载",
-  "pwd.list.header": "§e共有 §f%d §e名已注册玩家\n§f",
-  "pwd.list.warn": "§e共有 §f%d §e名未注册玩家在白名单（或管理员名单）中\n§f",
+  "pwd.list.header": "§e共有%d名已注册玩家：\n§f",
+  "pwd.list.warn": "§e共有 %d §e名未注册玩家在白名单（或管理员名单）中：\n§f",
   "pwd.copy": "单击拷贝密码到剪贴板",
 
   "unlogged.msg": "§e请先登录再发送信息",
   "unlogged.cmd": "§e请先登录再执行命令",
-  "unlogged.cmdFriendly": "§e/login 或 /register 格式有误\n  §f用法：\n  /login 密码\n  /register 密码 确认密码",
+  "unlogged.cmdFriendly": "§e/login 或 /register 格式错误\n  用法：§f\n  /login 密码\n  /register 密码 确认密码",
   "unlogged.title": "§e请先登录再进行游戏！",
 
   "whitelist.add.failed": "§e玩家已在白名单内",
   "whitelist.add.registered": "§e该玩家已注册，跳过自动注册",
-  "whitelist.add.pwd": "§e已为 §f%s §e注册，其初始密码为：",
+  "whitelist.add.pwd": "§e已为%s注册，其初始密码为：",
 
-  "guard.cmd.hit": "§e该命令被规则 §f%s §e拦截\n  §f描述：%s",
-  "guard.cmd.deny": "  你不能执行该命令",
-  "guard.cmd.confirm": "  请再次输入该命令以确认执行",
-  "guard.cmd.requestOp": "  请等待管理员批准方可执行",
+  "================== GUARD MODULE ==================" :  "",
 
-  "guard.rule.dupId": "§c已存在相同的规则 ID",
-  "guard.rule.unkId": "§c给定的规则 ID 不存在",
+  "guard.rule.dupId": "§c已存在相同的规则ID",
+  "guard.rule.unkId": "§c给定的规则ID不存在",
   "guard.rule.add": "§e规则添加成功。使用 /guard add condition 来为其添加触发条件",
   "guard.rule.remove": "§e已移除规则",
-  "guard.rule.removeFailed": "§c规则移除失败",
+  "guard.rule.edit": "§e规则修改成功",
   "guard.rule.empty": "§e规则列表为空",
-  "guard.rule.details": "§e规则 §f%s §e的详细信息：\n  §f描述：%s",
+
+  "guard.rule.list.header": "§e规则列表",
+  "guard.rule.list.ruleGreen": "§e§l#%d§r %s\n  行为：§a§l%s§r\n  描述：%s\n  条件：",
+  "guard.rule.list.ruleAqua": "§e§l#%d§r %s\n  行为：§b§l%s§r\n  描述：%s\n  条件：",
+  "guard.rule.list.ruleRed": "§e§l#%d§r %s\n  行为：§c§l%s§r\n  描述：%s\n  条件：",
+  "guard.rule.list.condition": "    %d. §e§l%s§r %s",
+  "guard.rule.list.separater": "\n────────────────────────────────\n",
+
+  "guard.rule.listNc.header": "Rule List",
+  "guard.rule.listNc.rule": "#%d %s\n  Action: %s\n  Desc: %s\n  Conditions:",
+  "guard.rule.listNc.condition": "    %d. %s %s",
 
   "guard.condition.emptyValue": "§c条件不能为空",
-  "guard.condition.targetEmpty": "$c目标规则没有条件",
-  "guard.condition.outOfRange": "$c条件编号超出了索引范围（%d-%d）",
+  "guard.condition.targetEmpty": "§c目标规则没有条件",
+  "guard.condition.outOfRange": "§c条件编号超出了索引范围（%d-%d）",
   "guard.condition.add": "§e已添加触发条件",
   "guard.condition.remove": "§e已移除指定的条件",
   "guard.condition.empty": "§e条件列表为空",
 
+  "guard.edit.failed": "§e规则修改失败",
+
+  "guard.test.pass": "§e该命令没有命中任何规则",
+  "guard.test.hitGreen": "────────────────────────────────\n该命令命中了 %s 规则\n  行为：§a§l%s§r\n  描述：%s\n────────────────────────────────",
+  "guard.test.hitAqua": "────────────────────────────────\n该命令命中了 %s 规则\n  行为：§b§l%s§r\n  描述：%s\n────────────────────────────────",
+  "guard.test.hitRed": "────────────────────────────────\n该命令命中了 %s 规则\n  行为：§c§l%s§r\n  描述：%s\n────────────────────────────────",
+
   "misc.empty": "无",
-  "misc.unkArg": "§c无法解析参数 %s"
+  "misc.unkArg": "§c无法解析参数%s",
+
+  "guard.cmd.hit": "§e────────────────────────────────\n！该命令命中了 %s 规则\n  描述：%s",
+  "guard.cmd.deny": "§c  禁止执行该命令\n§e────────────────────────────────",
+  "guard.cmd.confirm": "§b  请再次输入该命令以确认执行（%d秒）\n§e────────────────────────────────",
+  "guard.cmd.requestOp": "§b  请等待管理员批准方可执行（%d秒）\n§e────────────────────────────────",
+
+  "guard.cmd.request.header": "§e────────────────────────────────\n！%s想要执行下面的命令，该操作需要一名管理员批准\n  §f/%s",
+  "guard.cmd.request.decline": "§c§l§n拒绝§r",
+  "guard.cmd.request.approve": "§a§l§n批准§r",
+  "guard.cmd.request.footer": "§e────────────────────────────────",
+
+  "guard.cmd.expiredYours": "§c关于命令 /%s §c的会话已过期",
+  "guard.cmd.expired": "§c会话已过期或不存在",
+  "guard.cmd.invalidUUID": "§c会话UUID格式错误",
+  "guard.cmd.approved": "§b关于命令 /%s 的请求已被批准，请在%d秒内再次执行该指令",
+  "guard.cmd.declined": "§c关于命令 /%s 的请求被拒绝"
 }

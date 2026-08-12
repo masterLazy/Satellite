@@ -2,38 +2,42 @@ package masterlazy.satellite.guard;
 
 import masterlazy.satellite.guard.handler.CommandHandler;
 import masterlazy.satellite.guard.handler.EventHandler;
-import masterlazy.satellite.guard.model.RuleAction;
+import masterlazy.satellite.guard.model.CommandSession;
 import masterlazy.satellite.guard.model.ConditionEntry;
 import masterlazy.satellite.guard.model.RuleEntry;
-import java.util.ArrayList;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class GuardService {
     private final RuleRepository ruleRepository;
+    private final CommandSessionRepository commandSessionRepository;
     private final CommandHandler commandHandler;
     private final EventHandler eventHandler;
 
+    public final Duration expireConfirm = Duration.ofSeconds(30);
+    public final Duration expireRequestOp = Duration.ofSeconds(60);
+
     public GuardService(String baseDir) {
         ruleRepository = new RuleRepository(baseDir);
+        commandSessionRepository = new CommandSessionRepository();
         commandHandler = new CommandHandler(this);
         eventHandler = new EventHandler(this);
     }
 
     public void onInitialize() {
+        commandSessionRepository.register();
         commandHandler.register();
         eventHandler.register();
     }
 
     @Nullable
     public RuleEntry getRuleById(String id) {
-        for (RuleEntry entry : ruleRepository.getAllEntry()) {
-            if (entry.id().equalsIgnoreCase(id)) {
-                return entry;
-            }
-        }
-        return null;
+        return ruleRepository.getEntry(id);
     }
 
     public void insertRule(RuleEntry rule, int priority) {
@@ -42,29 +46,37 @@ public class GuardService {
     }
 
     public boolean removeRule(RuleEntry rule) {
-        if (!ruleRepository.hasNullField(rule)) return false;
-        ruleRepository.save();
-        return true;
+        if (!ruleRepository.hasEntry(rule)) return false;
+        if (!ruleRepository.removeEntry(rule)) return false;
+        return ruleRepository.save();
     }
 
     public RuleEntry[] getRules() {
-        return ruleRepository.getAllEntry();
+        return ruleRepository.getAllEntries();
     }
 
-    public void addCondition(RuleEntry rule, ConditionEntry condition) {
+    public boolean replaceRule(RuleEntry oldRule, RuleEntry newRule) {
+        if (!ruleRepository.hasEntry(oldRule)) return false;
+        ruleRepository.replaceEntry(oldRule, newRule);
+        return ruleRepository.save();
+    }
+
+    public boolean addCondition(RuleEntry rule, ConditionEntry condition) {
+        if (!ruleRepository.hasEntry(rule)) return false;
         List<ConditionEntry> conditions = new ArrayList<>(List.of(rule.conditions()));
         conditions.add(condition);
         RuleEntry newRule = new RuleEntry(rule.id(), rule.description(), rule.action(), conditions.toArray(ConditionEntry[]::new));
         ruleRepository.replaceEntry(rule, newRule);
-        ruleRepository.save();
+        return ruleRepository.save();
     }
 
-    public void removeCondition(RuleEntry rule, int no) {
+    public boolean removeCondition(RuleEntry rule, int no) {
+        if (!ruleRepository.hasEntry(rule)) return false;
         List<ConditionEntry> conditions = new ArrayList<>(List.of(rule.conditions()));
         conditions.remove(no - 1);
         RuleEntry newRule = new RuleEntry(rule.id(), rule.description(), rule.action(), conditions.toArray(ConditionEntry[]::new));
         ruleRepository.replaceEntry(rule, newRule);
-        ruleRepository.save();
+        return ruleRepository.save();
     }
 
 
@@ -72,30 +84,47 @@ public class GuardService {
     public RuleEntry testCommand(String command) {
         for (int i = 0; i < ruleRepository.getEntryCount(); i++) {
             RuleEntry ruleSet = ruleRepository.getEntry(i);
-            if (isRuleSetHit(ruleSet, command)) {
-                if (ruleSet.action() == RuleAction.ALLOW) return null;
+            if (isRuleHit(ruleSet, command)) {
                 return ruleSet;
             }
         }
         return null;
     }
 
-    private boolean isRuleSetHit(RuleEntry ruleSet, String command) {
+    private boolean isRuleHit(RuleEntry ruleSet, String command) {
         for (ConditionEntry rule : ruleSet.conditions()) {
-            if (isRuleHit(rule, command)) return true;
+            if (isConditionHit(rule, command)) return true;
         }
         return false;
     }
 
-    private boolean isRuleHit(ConditionEntry rule, String command) {
-        String condition = rule.value();
+    private boolean isConditionHit(ConditionEntry rule, String command) {
+        String value = rule.value();
         switch (rule.type()) {
-            case EQUALS -> { return command.equals(condition); }
-            case CONTAINS -> { return command.contains(condition); }
-            case STARTS_WITH -> { return command.startsWith(condition); }
-            case ENDS_WITH -> { return command.endsWith(condition); }
-            case MATCHES -> { return command.matches(condition); }
+            case EQUALS -> { return command.equals(value); }
+            case CONTAINS -> { return command.contains(value); }
+            case STARTS_WITH -> { return command.startsWith(value); }
+            case ENDS_WITH -> { return command.endsWith(value); }
+            case MATCHES -> { return command.matches(value); }
         }
         return false;
+    }
+
+    public void addCommandSession(CommandSession session) {
+        commandSessionRepository.addSession(session);
+    }
+
+    public void expireSession(CommandSession session) {
+        commandSessionRepository.expireSession(session);
+    }
+
+    @Nullable
+    public CommandSession getSession(UUID uuid) {
+        return commandSessionRepository.getSession(uuid);
+    }
+
+    @Nullable
+    public CommandSession getSession(ServerPlayer caller, String command) {
+        return commandSessionRepository.getSession(caller, command);
     }
 }

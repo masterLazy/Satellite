@@ -4,13 +4,9 @@
 
 ```
 /login <password>
-```
 
-```
-/password
-```
+/password 
 
-```
 /register <password> <confirmPassword>
 ```
 
@@ -31,7 +27,8 @@
 /guard set priority <ruleId> <priority>
 /guard set description <ruleId> <description>
 /guard list
-/guard details <ruleId>
 /guard test <command>
+/guard approve
+/guard decline
 ```
 

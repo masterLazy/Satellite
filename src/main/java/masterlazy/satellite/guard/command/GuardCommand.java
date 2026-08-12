@@ -63,14 +63,19 @@ public class GuardCommand {
 
                 .then(literal("list").executes(ctx -> handler.listRules(ctx.getSource().getPlayer())))
 
-                .then(literal("details").then(argument("ruleId", StringArgumentType.word()).suggests(new SuggestionRule(service)).executes(ctx -> {
-                    String ruleId = StringArgumentType.getString(ctx, "ruleId");
-                    return handler.detailsOf(ctx.getSource().getPlayer(), ruleId);
-                })))
-
                 .then(literal("test").then(argument("command", StringArgumentType.string()).executes(ctx -> {
                     String command = StringArgumentType.getString(ctx, "command");
                     return handler.testCommand(ctx.getSource().getPlayer(), command);
-                }))));
+                })))
+
+                .then(literal("approve").then(argument("sessionId",StringArgumentType.word()).executes(ctx -> {
+                    String uuid = StringArgumentType.getString(ctx, "sessionId");
+                    return handler.approveSession(ctx.getSource().getPlayer(), uuid);
+                })))
+                .then(literal("decline").then(argument("sessionId",StringArgumentType.word()).executes(ctx -> {
+                    String uuid = StringArgumentType.getString(ctx, "sessionId");
+                    return handler.declineSession(ctx.getSource().getPlayer(), uuid);
+                })))
+        );
     }
 }

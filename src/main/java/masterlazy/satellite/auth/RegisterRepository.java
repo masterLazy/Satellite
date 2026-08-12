@@ -13,11 +13,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 
 public class RegisterRepository {
     private static final String FILE_NAME = "register.json";
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
-    private final Map<String, RegisterEntry> entryMap = new LinkedHashMap<>();
+    private final Map<String, RegisterEntry> registerMap = new LinkedHashMap<>();
     private final File jsonFile;
 
     public RegisterRepository(String baseDir) {
@@ -32,60 +33,38 @@ public class RegisterRepository {
 
     @Nullable
     public RegisterEntry getEntry(String username) {
-        lock.readLock().lock();
-        try {
-            return entryMap.get(username);
-        } finally {
-            lock.readLock().unlock();
-        }
+        return withReadLock(() -> registerMap.get(username));
     }
 
     public boolean hasEntry(String username) {
-        lock.readLock().lock();
-        try {
-            return entryMap.containsKey(username);
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
-    public void putEntry(RegisterEntry registerEntry) {
-        lock.writeLock().lock();
-        try {
-            entryMap.put(registerEntry.name(), registerEntry);
-        } finally {
-            lock.writeLock().unlock();
-        }
+        return Boolean.TRUE.equals(withReadLock(() -> registerMap.containsKey(username)));
     }
 
     public String[] getEntryNames() {
-        lock.readLock().lock();
-        try {
-            return entryMap.keySet().toArray(new String[0]);
-        } finally {
-            lock.readLock().unlock();
-        }
+        return withReadLock(() -> registerMap.keySet().toArray(new String[0]));
+    }
+
+    public void putEntry(RegisterEntry registerEntry) {
+        withWriteLock(() -> registerMap.put(registerEntry.name(), registerEntry));
     }
 
     public void save() {
-        lock.readLock().lock();
-        try {
+        withReadLock(() -> {
             try (BufferedWriter writer = Files.newWriter(jsonFile, StandardCharsets.UTF_8)) {
-                Satellite.GSON.toJson(entryMap.values(), writer);
+                Satellite.GSON.toJson(registerMap.values(), writer);
+                return true;
             } catch (Exception e) {
                 Satellite.LOGGER.error("[Satellite] Failed to write {}", jsonFile, e);
+                return false;
             }
-        } finally {
-            lock.readLock().unlock();
-        }
+        });
     }
 
     public void load() {
-        lock.writeLock().lock();
-        try {
+        withWriteLock(() -> {
             if (!jsonFile.exists()) {
                 Satellite.LOGGER.warn("[Satellite] {} not found; will clear registration list in memory.", jsonFile);
-                entryMap.clear();
+                registerMap.clear();
                 return;
             }
 
@@ -121,12 +100,10 @@ public class RegisterRepository {
                 }
                 newMap.put(username, registerEntry);
             }
-            entryMap.clear();
-            entryMap.putAll(newMap);
-            Satellite.LOGGER.info("[Satellite] Loaded {} ({} users)", jsonFile, entryMap.size());
-        } finally {
-            lock.writeLock().unlock();
-        }
+            registerMap.clear();
+            registerMap.putAll(newMap);
+            Satellite.LOGGER.info("[Satellite] Loaded {} ({} users)", jsonFile, registerMap.size());
+        });
     }
 
     public boolean hasNullField(RegisterEntry entry) {
@@ -134,4 +111,30 @@ public class RegisterRepository {
         if (entry.pwd_hash() == null) return true;
         return false;
     }
+
+    // Helpers
+
+    private <T> T withReadLock(Supplier<T> task) {
+        lock.readLock().lock();
+        try {
+            return task.get();
+        } catch (Exception e) {
+            Satellite.LOGGER.error("[Satellite] Exception occurred when reading RegisterRepository", e);
+        } finally {
+            lock.readLock().unlock();
+        }
+        return null;
+    }
+
+    private void withWriteLock(Runnable task) {
+        lock.writeLock().lock();
+        try {
+            task.run();
+        } catch (Exception e) {
+            Satellite.LOGGER.error("[Satellite] Exception occurred when writing to RegisterRepository", e);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
 }

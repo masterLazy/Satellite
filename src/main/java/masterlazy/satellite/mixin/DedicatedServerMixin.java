@@ -17,13 +17,13 @@ public class DedicatedServerMixin {
     boolean usesAuthentication(DedicatedServer instance) {
         if (!satellite$firstCall) return instance.usesAuthentication();
         if (instance.usesAuthentication()) {
-            Satellite.LOGGER.warn("Server is running in ONLINE mode with Satellite's authentication system");
+            Satellite.LOGGER.warn("**** Server is running in ONLINE mode with Satellite's authentication system");
         } else {
             if (!instance.isEnforceWhitelist()) {
                 Satellite.LOGGER.warn("**** \"enforce-whitelist\" has been set to FALSE. Set to TRUE to ensure security.");
                 Satellite.LOGGER.warn("To change this, set \"enforce-whitelist\" to \"true\" in the server.properties file.");
             }
-            Satellite.LOGGER.warn("Server is running in OFFLINE mode with Satellite's authentication system");
+            Satellite.LOGGER.info("**** Server is running in OFFLINE mode with Satellite's authentication system");
         }
         satellite$firstCall = false;
         return true;
