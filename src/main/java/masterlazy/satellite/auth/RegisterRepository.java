@@ -49,13 +49,11 @@ public class RegisterRepository {
     }
 
     public void save() {
-        withReadLock(() -> {
+        withWriteLock(() -> {
             try (BufferedWriter writer = Files.newWriter(jsonFile, StandardCharsets.UTF_8)) {
                 Satellite.GSON.toJson(registerMap.values(), writer);
-                return true;
             } catch (Exception e) {
                 Satellite.LOGGER.error("[Satellite] Failed to write {}", jsonFile, e);
-                return false;
             }
         });
     }

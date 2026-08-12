@@ -74,7 +74,7 @@ public class RuleRepository {
     }
 
     public boolean save() {
-        return Boolean.TRUE.equals(withReadLock(() -> {
+        return Boolean.TRUE.equals(withWriteLock(() -> {
             try (BufferedWriter writer = Files.newWriter(jsonFile, StandardCharsets.UTF_8)) {
                 Satellite.GSON.toJson(ruleList, writer);
                 return true;
