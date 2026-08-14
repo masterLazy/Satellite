@@ -26,7 +26,7 @@ public class EventHandler {
     public void onServerPlayerDisconnect(ServerPlayer player) {
         PlayerSession session = service.getSession(player);
         if (session == null) return;
-        if (session.isFroze()) session.restorePlayer();
+        if (session.isFrozen()) session.restorePlayer();
         service.unregisterSession(player);
     }
 }

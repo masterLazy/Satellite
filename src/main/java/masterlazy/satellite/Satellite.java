@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import masterlazy.satellite.auth.AuthService;
 import masterlazy.satellite.guard.GuardService;
+import masterlazy.satellite.remote.RemoteService;
 import masterlazy.satellite.session.SessionService;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -31,7 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 public class Satellite implements ModInitializer {
-    public static final String MOD_ID = "Satellite";
+    private static final String MOD_ID = "Satellite";
     public static final String BASE_DIR = '.' + MOD_ID.toLowerCase() + '/';
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -43,6 +44,7 @@ public class Satellite implements ModInitializer {
     private final SessionService sessionService = new SessionService();
     private final AuthService authService = new AuthService(BASE_DIR, sessionService);
     private final GuardService guardService = new GuardService(BASE_DIR);
+    private final RemoteService remoteService = new RemoteService(sessionService, authService);
 
     @Override
     public void onInitialize() {
@@ -56,6 +58,7 @@ public class Satellite implements ModInitializer {
         sessionService.onInitialize();
         authService.onInitialize();
         guardService.onInitialize();
+        remoteService.onInitialize();
     }
 
     // Server

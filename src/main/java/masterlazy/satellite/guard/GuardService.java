@@ -19,8 +19,8 @@ public class GuardService {
     private final CommandHandler commandHandler;
     private final EventHandler eventHandler;
 
-    public final Duration expireConfirm = Duration.ofSeconds(30);
-    public final Duration expireRequestOp = Duration.ofSeconds(60);
+    public static final Duration TIMEOUT_CONFIRM = Duration.ofSeconds(30);
+    public static final Duration TIMEOUT_REQUEST_OP = Duration.ofSeconds(60);
 
     public GuardService(String baseDir) {
         ruleRepository = new RuleRepository(baseDir);

@@ -36,7 +36,7 @@ public class EventHandler {
             onAddingWhitelist(ctx.getPlayer(), gameProfile.getName())));
     }
 
-    public void onPlayerJoin(ServerPlayer player) {
+    private void onPlayerJoin(ServerPlayer player) {
         if (Satellite.isSingleGame()) return;
         PlayerSession session = sessionService.getSession(player);
         if (session == null) return;
@@ -55,7 +55,7 @@ public class EventHandler {
         Satellite.showTitle(player, title);
     }
 
-    public boolean onAllowChatMessage(ServerPlayer player) {
+    private boolean onAllowChatMessage(ServerPlayer player) {
         if (Satellite.isSingleGame()) return true;
         PlayerSession session = sessionService.getSession(player);
         if (session == null) return false;
@@ -65,7 +65,7 @@ public class EventHandler {
         return false;
     }
 
-    public boolean onAllowExecuteCommand(ServerPlayer player, String command) {
+    private boolean onAllowExecuteCommand(ServerPlayer player, String command) {
         if (Satellite.isSingleGame()) return true;
         PlayerSession session = sessionService.getSession(player);
         if (session == null) return false;
@@ -80,7 +80,7 @@ public class EventHandler {
         return false;
     }
 
-    public void onAddingWhitelist(ServerPlayer player, String targetName) {
+    private void onAddingWhitelist(ServerPlayer player, String targetName) {
         if (!service.isRegistered(targetName)) {
             String password = AuthUtils.getNewPassword();
             service.savePassword(targetName, password);

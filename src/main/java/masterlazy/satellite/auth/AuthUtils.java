@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class AuthUtils {
-    private static final SecureRandom random = new SecureRandom();
+    private static final SecureRandom RANDOM = new SecureRandom();
     private static final ThreadLocal<MessageDigest> SHA256 = ThreadLocal.withInitial(() -> {
         try {
             return MessageDigest.getInstance("SHA-256");
@@ -21,7 +21,7 @@ public class AuthUtils {
         final String CHAR = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
         final int LENGTH = 8;
         return IntStream.range(0, LENGTH)
-                .mapToObj(i -> String.valueOf(CHAR.charAt(random.nextInt(CHAR.length()))))
+                .mapToObj(i -> String.valueOf(CHAR.charAt(RANDOM.nextInt(CHAR.length()))))
                 .collect(Collectors.joining());
     }
 

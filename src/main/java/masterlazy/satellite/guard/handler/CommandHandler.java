@@ -2,7 +2,6 @@ package masterlazy.satellite.guard.handler;
 
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.guard.GuardService;
-import masterlazy.satellite.guard.GuardUtils;
 import masterlazy.satellite.guard.command.GuardCommand;
 import masterlazy.satellite.guard.model.*;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -31,7 +30,7 @@ public class CommandHandler {
     }
 
     public int addRule(ServerPlayer player, String ruleId, String action, int priority, String description) {
-        RuleAction ruleAction = GuardUtils.ruleActionOf(action);
+        RuleAction ruleAction = RuleAction.from(action);
         if (service.getRuleById(ruleId) != null) {
             if (player != null) {
                 Satellite.sendMessageWithKey(player, "guard.rule.dupId");
@@ -71,7 +70,7 @@ public class CommandHandler {
 
     public int setRuleAction(ServerPlayer player, String ruleId, String action) {
         RuleEntry rule = service.getRuleById(ruleId);
-        RuleAction ruleAction = GuardUtils.ruleActionOf(action);
+        RuleAction ruleAction = RuleAction.from(action);
         if (rule == null) {
             feedbackUnknownRule(player);
         } else if (ruleAction == null) {
@@ -159,7 +158,7 @@ public class CommandHandler {
 
     public int addCondition(ServerPlayer player, String ruleId, String type, String value) {
         RuleEntry rule = service.getRuleById(ruleId);
-        ConditionType conditionType = GuardUtils.conditionTypeOf(type);
+        ConditionType conditionType = ConditionType.from(type);
         if (rule == null) {
             feedbackUnknownRule(player);
         } else if (conditionType == null) {
@@ -243,9 +242,9 @@ public class CommandHandler {
             } else {
                 service.expireSession(session);
                 CommandSession session1 = new CommandSession(session.caller(), session.command(), RuleAction.CONFIRM,
-                        Instant.now().plus(service.expireConfirm), UUID.randomUUID());
+                        Instant.now().plus(GuardService.TIMEOUT_CONFIRM), UUID.randomUUID());
                 service.addCommandSession(session1);
-                Satellite.sendMessageWithKey(player, "guard.cmd.approved", session.command(), service.expireConfirm.toSeconds());
+                Satellite.sendMessageWithKey(player, "guard.cmd.approved", session.command(), GuardService.TIMEOUT_CONFIRM.toSeconds());
             }
         } catch (Exception e) {
             if (player != null) Satellite.sendMessageWithKey(player, "guard.cmd.invalidUUID");

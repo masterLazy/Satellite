@@ -4,6 +4,7 @@ import masterlazy.satellite.session.handler.EventHandler;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -14,6 +15,12 @@ public class SessionService {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final HashMap<UUID, PlayerSession> sessions = new HashMap<>();
+
+    public static final int REQUEST_RATE_LIMIT = 1200;
+    public static final Duration REQUEST_RATE_RESET = Duration.ofSeconds(60);
+
+    public static final int AUTHORIZE_RATE_LIMIT = 5;
+    public static final Duration AUTHORIZE_RATE_RESET = Duration.ofSeconds(60);
 
     public SessionService() {
         eventHandler = new EventHandler(this);

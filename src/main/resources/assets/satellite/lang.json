@@ -87,5 +87,12 @@
   "guard.cmd.expired": "§c会话已过期或不存在",
   "guard.cmd.invalidUUID": "§c会话UUID格式错误",
   "guard.cmd.approved": "§b关于命令 /%s 的请求已被批准，请在%d秒内再次执行该指令",
-  "guard.cmd.declined": "§c关于命令 /%s 的请求被拒绝"
+  "guard.cmd.declined": "§c关于命令 /%s 的请求被拒绝",
+
+  "================== REMOTE MODULE ==================" :  "",
+
+  "remote.status.available": "§eSatellite远程会话可用",
+  "remote.status.unavailable": "§eSatellite远程会话不可用",
+  "remote.console.start": "§b远程控制台已启动，端口：%d",
+  "remote.console.startFailed": "§c远程控制台启动失败"
 }

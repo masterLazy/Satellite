@@ -27,7 +27,7 @@ public class EventHandler {
         SatelliteEvents.ALLOW_EXECUTE_COMMAND.register(((player, packet) -> onAllowExecuteCommand(player, packet.command())));
     }
 
-    public boolean onAllowExecuteCommand(ServerPlayer player, String command) {
+    private boolean onAllowExecuteCommand(ServerPlayer player, String command) {
         if (player == null) return true; // Allow all commands from server
         RuleEntry rule = service.testCommand(command);
         if (rule == null || rule.action() == RuleAction.ALLOW) return true;
@@ -47,11 +47,11 @@ public class EventHandler {
                 return false;
             }
             case CONFIRM -> {
-                expireDuration = service.expireConfirm;
+                expireDuration = GuardService.TIMEOUT_CONFIRM;
                 Satellite.sendMessageWithKey(player, "guard.cmd.confirm", expireDuration.toSeconds());
             }
             case REQUEST_OP -> {
-                expireDuration = service.expireRequestOp;
+                expireDuration = GuardService.TIMEOUT_REQUEST_OP;
                 Satellite.sendMessageWithKey(player, "guard.cmd.requestOp", expireDuration.toSeconds());
             }
         }
