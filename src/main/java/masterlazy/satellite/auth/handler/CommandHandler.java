@@ -6,8 +6,7 @@ import masterlazy.satellite.auth.AuthUtils;
 import masterlazy.satellite.auth.command.LoginCommand;
 import masterlazy.satellite.auth.command.PasswordCommand;
 import masterlazy.satellite.auth.command.RegisterCommand;
-import masterlazy.satellite.session.SessionService;
-import masterlazy.satellite.session.PlayerSession;
+import masterlazy.satellite.auth.AuthSession;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -22,11 +21,9 @@ import java.util.stream.Stream;
 
 public class CommandHandler {
     private final AuthService service;
-    private final SessionService sessionService;
 
-    public CommandHandler(AuthService service, SessionService sessionService) {
+    public CommandHandler(AuthService service) {
         this.service = service;
-        this.sessionService = sessionService;
     }
 
     public void register() {
@@ -38,7 +35,7 @@ public class CommandHandler {
     }
 
     public int login(ServerPlayer player, String password) {
-        PlayerSession session = sessionService.getSession(player);
+        AuthSession session = service.getSession(player);
         if (session == null) return 0;
         String username = player.getName().getString();
 
@@ -46,9 +43,12 @@ public class CommandHandler {
             Satellite.sendMessageWithKey(player, "login.logged");
         } else if (!service.isRegistered(player)) {
             Satellite.sendMessageWithKey(player, "login.unregistered");
+        } else if (!session.tryAuthorize()) {
+            Satellite.sendMessageWithKey(player, "login.rateLimit");
         } else if (!service.isCorrectPassword(username, password)) {
             Satellite.sendMessageWithKey(player, "login.incorrectPwd");
         } else {
+            session.revertAuthorizeRate();
             session.setLoggedIn(true);
             session.restorePlayer();
 
@@ -60,7 +60,7 @@ public class CommandHandler {
     }
 
     public int register(ServerPlayer player, String password, String confirmPassword) {
-        PlayerSession session = sessionService.getSession(player);
+        AuthSession session = service.getSession(player);
         if (session == null) return 0;
         String username = player.getName().getString();
 

@@ -1,26 +1,26 @@
 package masterlazy.satellite.remote.model;
 
-import org.jetbrains.annotations.Nullable;
-
-public enum RequestResult {
+public enum Status {
     // 2xx
     OK,
     // 4xx
     BAD_REQUEST,
     UNAUTHORIZED,
+    FORBIDDEN,
     NOT_FOUND,
     CONFLICT,
     TOO_MANY_REQUEST,
     // 5xx
-    INTERNAL_SERVER_ERROR;
+    INTERNAL_SERVER_ERROR,
 
-    @Nullable
-    public static RequestResult from(String string) {
-        for (RequestResult v : RequestResult.values()) {
+    UNKNOWN;
+
+    public static Status from(String string) {
+        for (Status v : Status.values()) {
             if (v.name().equalsIgnoreCase(string)) {
                 return v;
             }
         }
-        return null;
+        return UNKNOWN;
     }
 }

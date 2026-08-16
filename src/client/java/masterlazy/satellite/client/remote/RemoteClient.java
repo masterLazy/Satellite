@@ -1,80 +1,68 @@
 package masterlazy.satellite.client.remote;
 
-import masterlazy.satellite.client.remote.command.RemoteCommand;
+import masterlazy.satellite.client.remote.command.SatelliteCommand;
+import masterlazy.satellite.client.remote.cli.SshServer;
+import masterlazy.satellite.remote.model.CommandEnum;
 import masterlazy.satellite.remote.payload.*;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import org.apache.sshd.server.session.ServerSession;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context;
+import org.jetbrains.annotations.Nullable;
 
-import java.security.SecureRandom;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.UUID;
+import java.util.concurrent.*;
 
 public class RemoteClient {
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private final Handler handler = new Handler(this);
-    private final ConsoleSsh consoleSsh = new ConsoleSsh(this);
-
-    private final HashMap<Integer, Object> received = new HashMap<>();
-    private final HashSet<Integer> deposedIds = new HashSet<>();
-    private final HashMap<ServerSession, String> tokens = new HashMap<>();
-
-    public final String VERSION = "v1";
+    private final SshServer sshServer = new SshServer();
     private boolean remoteAvailable = false;
 
-    public synchronized void setRemoteAvailable(boolean available) {
-        remoteAvailable = available;
-    }
+    private final ResponseManager<CommandS2CPayload> commandResponseManager = new ResponseManager<>();
+    private final BlockingQueue<ConsoleFeedS2CPayload> feedQueue = new LinkedBlockingQueue<>();
 
-    public synchronized boolean isRemoteAvailable() {
-        return remoteAvailable;
-    }
+    public final String VERSION = "v1";
+    public final int COMMAND_TIMEOUT_SECONDS = 5;
+    public final int FEED_TIMEOUT_MILLISECONDS = 10;
 
-    public synchronized void putReceived(int requestId, Object payload) {
-        received.put(requestId, payload);
-    }
-
-    public synchronized boolean isDeposed(int requestId) {
-        if (deposedIds.contains(requestId)) {
-            deposedIds.remove(requestId);
-            return true;
-        }
-        return false;
-    }
+    public boolean isRemoteAvailable() { return remoteAvailable; }
 
     public void onInitialize() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->{
-            RemoteCommand.register(dispatcher, this, consoleSsh);
+            SatelliteCommand.register(dispatcher, this, sshServer);
+        });
+        ClientPlayConnectionEvents.DISCONNECT.register((listener, client)->{
+            sshServer.close();
+        });
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            sshServer.close();
         });
         // Payloads
-        ClientPlayNetworking.registerGlobalReceiver(HelloS2CPayload.ID, handler::handleHelloS2C);
-        ClientPlayNetworking.registerGlobalReceiver(AuthorizeS2CPayload.ID, handler::handleAuthorizeS2C);
-        ClientPlayNetworking.registerGlobalReceiver(ConsoleCmdS2CPayload.ID, handler::handleConsoleCmdS2C);
-        ClientPlayNetworking.registerGlobalReceiver(ConsoleFeedS2CPayload.ID, handler::handleConsoleFeedS2C);
+        ClientPlayNetworking.registerGlobalReceiver(HelloS2CPayload.ID, this::handleHelloS2C);
+        ClientPlayNetworking.registerGlobalReceiver(CommandS2CPayload.ID, commandResponseManager::handle);
+        ClientPlayNetworking.registerGlobalReceiver(ConsoleFeedS2CPayload.ID, this::handleConsoleFeedS2C);
     }
 
-    // TODO: 找一种更安全的方法。。。
-    public boolean getTokenForSession(String password, ServerSession session) {
-        if (!remoteAvailable) return false;
-        int requestId = RANDOM.nextInt();
-        ClientPlayNetworking.send(new AuthorizeC2SPayload(requestId, password));
-        Instant timeout = Instant.now().plus(Duration.ofSeconds(30));
-        while (timeout.isAfter(Instant.now())) {
-            try {
-                if (received.containsKey(requestId)) {
-                    AuthorizeS2CPayload payload = (AuthorizeS2CPayload) received.remove(requestId);
-                    if (payload.token().isEmpty()) return false;
-                    tokens.put(session, payload.token());
-                    return true;
-                }
-                Thread.sleep(100);
-            } catch (Exception ignored) {
-                break;
-            }
+    private void handleHelloS2C(HelloS2CPayload payload, Context context) {
+        if (ClientPlayNetworking.canSend(HelloC2SPayload.ID.id()) && payload.version().equals(VERSION)) {
+            ClientPlayNetworking.send(new HelloC2SPayload(true));
+            remoteAvailable = true;
         }
-        deposedIds.add(requestId);
-        return false;
+    }
+
+    private void handleConsoleFeedS2C(ConsoleFeedS2CPayload payload, Context context) {
+        feedQueue.offer(payload);
+    }
+
+    public Future<CommandS2CPayload> sendCommand(String token, CommandEnum command, @Nullable String[] args) {
+        UUID requestId = UUID.randomUUID();
+        Future<CommandS2CPayload> future = commandResponseManager.responseFor(requestId, COMMAND_TIMEOUT_SECONDS);
+        ClientPlayNetworking.send(new CommandC2SPayload(requestId, token, command, args == null ? new String[0] : args));
+        return future;
+    }
+
+    @Nullable
+    public ConsoleFeedS2CPayload pollFeed() throws InterruptedException {
+        return feedQueue.poll(FEED_TIMEOUT_MILLISECONDS, TimeUnit.MILLISECONDS);
     }
 }

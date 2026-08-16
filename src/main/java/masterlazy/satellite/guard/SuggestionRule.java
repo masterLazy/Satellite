@@ -1,10 +1,9 @@
-package masterlazy.satellite;
+package masterlazy.satellite.guard;
 
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import masterlazy.satellite.guard.GuardService;
 import masterlazy.satellite.guard.model.RuleEntry;
 import net.minecraft.commands.CommandSourceStack;
 

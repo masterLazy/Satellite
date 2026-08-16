@@ -8,6 +8,7 @@
 
   "login.logged": "§e你已经登录了",
   "login.unregistered": "§c你尚未注册！请使用 /register 注册",
+  "login.rateLimit": "§c鉴权速率达到上限，请稍后再试",
   "login.incorrectPwd": "§c密码不匹配，请重试",
   "login.success": "§e%s登录成功",
   "login.local": "§e正在跳过本地玩家%s的登录",
@@ -93,6 +94,8 @@
 
   "remote.status.available": "§eSatellite远程会话可用",
   "remote.status.unavailable": "§eSatellite远程会话不可用",
-  "remote.console.start": "§b远程控制台已启动，端口：%d",
-  "remote.console.startFailed": "§c远程控制台启动失败"
+  "remote.cli.start": "§bSatellite CLI已在localhost启动，端口：%d",
+  "remote.cli.startFailed": "§cSatellite CLI启动失败",
+  "remote.cli.close": "§eSatellite CLI已关闭",
+  "remote.cli.closeFailed": "§cSatellite CLI关闭失败"
 }

@@ -6,7 +6,6 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import masterlazy.satellite.auth.AuthService;
 import masterlazy.satellite.guard.GuardService;
 import masterlazy.satellite.remote.RemoteService;
-import masterlazy.satellite.session.SessionService;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.network.chat.Component;
@@ -35,16 +34,16 @@ public class Satellite implements ModInitializer {
     private static final String MOD_ID = "Satellite";
     public static final String BASE_DIR = '.' + MOD_ID.toLowerCase() + '/';
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final BackgroundLogger B_LOGGER = new BackgroundLogger(BASE_DIR);
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     public static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
     public static MinecraftServer Server;
     public static LangManager langManager = new LangManager();
 
-    private final SessionService sessionService = new SessionService();
-    private final AuthService authService = new AuthService(BASE_DIR, sessionService);
+    private final AuthService authService = new AuthService(BASE_DIR);
     private final GuardService guardService = new GuardService(BASE_DIR);
-    private final RemoteService remoteService = new RemoteService(sessionService, authService);
+    private final RemoteService remoteService = new RemoteService(authService);
 
     @Override
     public void onInitialize() {
@@ -55,7 +54,6 @@ public class Satellite implements ModInitializer {
             LOGGER.error("[Satellite] Failed to crate base directory {}", BASE_DIR, e);
         }
         // Services
-        sessionService.onInitialize();
         authService.onInitialize();
         guardService.onInitialize();
         remoteService.onInitialize();

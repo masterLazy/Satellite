@@ -1,6 +1,8 @@
 package masterlazy.satellite.guard.handler;
 
 import masterlazy.satellite.Satellite;
+import masterlazy.satellite.guard.CommandSession;
+import masterlazy.satellite.guard.CommandSessionManager;
 import masterlazy.satellite.guard.GuardService;
 import masterlazy.satellite.guard.command.GuardCommand;
 import masterlazy.satellite.guard.model.*;
@@ -14,9 +16,11 @@ import java.util.UUID;
 
 public class CommandHandler {
     private final GuardService service;
+    private final CommandSessionManager commandSessionManager;
 
-    public CommandHandler(GuardService service) {
+    public CommandHandler(GuardService service, CommandSessionManager commandSessionManager) {
         this.service = service;
+        this.commandSessionManager = commandSessionManager;
     }
 
     public void register() {
@@ -143,7 +147,6 @@ public class CommandHandler {
             else if (rules[i].action() == RuleAction.DENY) key = "guard.rule.list.ruleRed";
             feedback.append(String.format(Satellite.lang(key), i+1, rules[i].id(), rules[i].action(), rules[i].description()));
             for (int j = 0; j < rules[i].conditions().length; j++) {
-                key = "guard.rule.list.ruleAqua";
                 if (player == null) key = "guard.rule.listNc.condition";
                 else key = "guard.rule.list.condition";
                 feedback.append("\n");
@@ -235,17 +238,21 @@ public class CommandHandler {
 
     public int approveSession(ServerPlayer player, String uuid) {
         try {
-            CommandSession session = service.getSession(UUID.fromString(uuid));
-            if (session == null) {
+            CommandSession session = commandSessionManager.get(UUID.fromString(uuid));
+            if (session == null || session.getCaller() == null || session.getAction() != RuleAction.REQUEST_OP) {
                 if (player != null) Satellite.sendMessageWithKey(player, "guard.cmd.expired");
-                else Satellite.LOGGER.warn("[Satellite] Specific session not found");
+                else Satellite.LOGGER.warn("[Satellite] Failed to approve: specific session not found");
             } else {
-                service.expireSession(session);
-                CommandSession session1 = new CommandSession(session.caller(), session.command(), RuleAction.CONFIRM,
-                        Instant.now().plus(GuardService.TIMEOUT_CONFIRM), UUID.randomUUID());
-                service.addCommandSession(session1);
-                Satellite.sendMessageWithKey(player, "guard.cmd.approved", session.command(), GuardService.TIMEOUT_CONFIRM.toSeconds());
+                commandSessionManager.expire(session);
+                CommandSession session1 = new CommandSession(session.getCaller(), session.getCommand(), RuleAction.CONFIRM,
+                        Instant.now().plus(GuardService.TIMEOUT_CONFIRM));
+                commandSessionManager.register(session1);
+                Satellite.sendMessageWithKey(player, "guard.cmd.approved", session.getCommand(), GuardService.TIMEOUT_CONFIRM.toSeconds());
             }
+            if (session != null && session.getCaller() == null) {
+                commandSessionManager.expire(session);
+            }
+
         } catch (Exception e) {
             if (player != null) Satellite.sendMessageWithKey(player, "guard.cmd.invalidUUID");
             else Satellite.LOGGER.warn("[Satellite] Invalid UUID string", e);
@@ -255,13 +262,16 @@ public class CommandHandler {
 
     public int declineSession(ServerPlayer player, String uuid) {
         try {
-            CommandSession session = service.getSession(UUID.fromString(uuid));
-            if (session == null) {
+            CommandSession session = commandSessionManager.get(UUID.fromString(uuid));
+            if (session == null || session.getCaller() == null || session.getAction() != RuleAction.REQUEST_OP) {
                 if (player != null) Satellite.sendMessageWithKey(player, "guard.cmd.expired");
-                else Satellite.LOGGER.warn("[Satellite] Specific session not found");
+                else Satellite.LOGGER.warn("[Satellite] Failed to decline: specific session not found");
             } else {
-                service.expireSession(session);
-                Satellite.sendMessageWithKey(player, "guard.cmd.declined", session.command());
+                commandSessionManager.expire(session);
+                Satellite.sendMessageWithKey(player, "guard.cmd.declined", session.getCommand());
+            }
+            if (session != null && session.getCaller() == null) {
+                commandSessionManager.expire(session);
             }
         } catch (Exception e) {
             if (player != null) Satellite.sendMessageWithKey(player, "guard.cmd.invalidUUID");

@@ -3,7 +3,7 @@ package masterlazy.satellite.guard.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import masterlazy.satellite.SuggestionRule;
+import masterlazy.satellite.guard.SuggestionRule;
 import masterlazy.satellite.guard.GuardService;
 import masterlazy.satellite.guard.SuggestionAction;
 import masterlazy.satellite.guard.SuggestionType;

@@ -2,8 +2,9 @@ package masterlazy.satellite.guard.handler;
 
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.SatelliteEvents;
+import masterlazy.satellite.guard.CommandSessionManager;
 import masterlazy.satellite.guard.GuardService;
-import masterlazy.satellite.guard.model.CommandSession;
+import masterlazy.satellite.guard.CommandSession;
 import masterlazy.satellite.guard.model.RuleAction;
 import masterlazy.satellite.guard.model.RuleEntry;
 import net.minecraft.network.chat.ClickEvent;
@@ -14,13 +15,14 @@ import net.minecraft.server.players.PlayerList;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
 
 public class EventHandler {
     private final GuardService service;
+    private final CommandSessionManager commandSessionManager;
 
-    public EventHandler(GuardService service) {
+    public EventHandler(GuardService service, CommandSessionManager commandSessionManager) {
         this.service = service;
+        this.commandSessionManager = commandSessionManager;
     }
 
     public void register() {
@@ -32,9 +34,9 @@ public class EventHandler {
         RuleEntry rule = service.testCommand(command);
         if (rule == null || rule.action() == RuleAction.ALLOW) return true;
 
-        CommandSession existedSession = service.getSession(player, command);
-        if (existedSession != null && existedSession.ruleAction() == RuleAction.CONFIRM) {
-            service.expireSession(existedSession);
+        CommandSession existedSession = commandSessionManager.get(player, command);
+        if (existedSession != null && existedSession.getAction() == RuleAction.CONFIRM) {
+            commandSessionManager.expire(existedSession);
             return true;
         }
 
@@ -57,9 +59,9 @@ public class EventHandler {
         }
         // Set up command existedSession
         if (expireDuration != null) {
-            CommandSession session = new CommandSession(player.getUUID(), command, rule.action(), Instant.now().plus(expireDuration), UUID.randomUUID());
-            service.addCommandSession(session);
-            if (session.ruleAction() == RuleAction.REQUEST_OP) {
+            CommandSession session = new CommandSession(player, command, rule.action(), Instant.now().plus(expireDuration));
+            commandSessionManager.register(session);
+            if (session.getAction() == RuleAction.REQUEST_OP) {
                 Satellite.EXECUTOR.submit(() -> requestAllOps(session));
             }
         }
@@ -67,16 +69,16 @@ public class EventHandler {
     }
 
     private void requestAllOps(CommandSession session) {
-        ServerPlayer player = Satellite.Server.getPlayerList().getPlayer(session.caller());
+        ServerPlayer player = session.getCaller();
         if (player == null) return;
         MutableComponent feedback = Component.literal(String.format(Satellite.lang("guard.cmd.request.header"),
-                player.getName().getString(), session.command()));
+                player.getName().getString(), session.getCommand()));
         MutableComponent decline = Component.literal(Satellite.lang("guard.cmd.request.decline"));
         decline.setStyle(decline.getStyle()
-                .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/guard decline " + session.uuid())));
+                .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/guard decline " + session.getUUID())));
         MutableComponent approve = Component.literal(Satellite.lang("guard.cmd.request.approve"));
         approve.setStyle(approve.getStyle()
-                .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/guard approve " + session.uuid())));
+                .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/guard approve " + session.getUUID())));
         feedback.append("\n  ").append(decline).append("        ").append(approve).append("\n").append(Satellite.lang("guard.cmd.request.footer"));
 
         PlayerList list = Satellite.Server.getPlayerList();

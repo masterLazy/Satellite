@@ -34,9 +34,10 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-	// SSH Server
+	// CLI
 	include(modImplementation "org.apache.sshd:sshd-core:2.15.0")
 	include(modImplementation "org.apache.sshd:sshd-common:2.15.0")
+	include(modImplementation "info.picocli:picocli:4.7.7")
 
 	// Compression
 	include(modImplementation 'org.xerial.snappy:snappy-java:1.1.10.5')

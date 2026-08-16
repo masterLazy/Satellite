@@ -2,20 +2,17 @@ package masterlazy.satellite.guard;
 
 import masterlazy.satellite.guard.handler.CommandHandler;
 import masterlazy.satellite.guard.handler.EventHandler;
-import masterlazy.satellite.guard.model.CommandSession;
 import masterlazy.satellite.guard.model.ConditionEntry;
 import masterlazy.satellite.guard.model.RuleEntry;
-import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class GuardService {
     private final RuleRepository ruleRepository;
-    private final CommandSessionRepository commandSessionRepository;
+    private final CommandSessionManager commandSessionManager;
     private final CommandHandler commandHandler;
     private final EventHandler eventHandler;
 
@@ -24,13 +21,13 @@ public class GuardService {
 
     public GuardService(String baseDir) {
         ruleRepository = new RuleRepository(baseDir);
-        commandSessionRepository = new CommandSessionRepository();
-        commandHandler = new CommandHandler(this);
-        eventHandler = new EventHandler(this);
+        commandSessionManager = new CommandSessionManager();
+        commandHandler = new CommandHandler(this, commandSessionManager);
+        eventHandler = new EventHandler(this, commandSessionManager);
     }
 
     public void onInitialize() {
-        commandSessionRepository.register();
+        commandSessionManager.onInitialize();
         commandHandler.register();
         eventHandler.register();
     }
@@ -83,9 +80,10 @@ public class GuardService {
     @Nullable
     public RuleEntry testCommand(String command) {
         for (int i = 0; i < ruleRepository.getEntryCount(); i++) {
-            RuleEntry ruleSet = ruleRepository.getEntry(i);
-            if (isRuleHit(ruleSet, command)) {
-                return ruleSet;
+            RuleEntry rule = ruleRepository.getEntry(i);
+            if (rule == null) continue; // TODO
+            if (isRuleHit(rule, command)) {
+                return rule;
             }
         }
         return null;
@@ -108,23 +106,5 @@ public class GuardService {
             case MATCHES -> { return command.matches(value); }
         }
         return false;
-    }
-
-    public void addCommandSession(CommandSession session) {
-        commandSessionRepository.addSession(session);
-    }
-
-    public void expireSession(CommandSession session) {
-        commandSessionRepository.expireSession(session);
-    }
-
-    @Nullable
-    public CommandSession getSession(UUID uuid) {
-        return commandSessionRepository.getSession(uuid);
-    }
-
-    @Nullable
-    public CommandSession getSession(ServerPlayer caller, String command) {
-        return commandSessionRepository.getSession(caller, command);
     }
 }

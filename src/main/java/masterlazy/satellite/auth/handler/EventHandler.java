@@ -3,11 +3,10 @@ package masterlazy.satellite.auth.handler;
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.SatelliteEvents;
 import masterlazy.satellite.auth.AuthService;
+import masterlazy.satellite.auth.AuthSession;
 import masterlazy.satellite.auth.AuthUtils;
 import masterlazy.satellite.auth.command.LoginCommand;
 import masterlazy.satellite.auth.command.RegisterCommand;
-import masterlazy.satellite.session.SessionService;
-import masterlazy.satellite.session.PlayerSession;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.network.chat.ClickEvent;
@@ -16,29 +15,32 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 
+/*
+* NOTES of ServerPlayConnectionEvents:
+*   1.  INIT: Cannot send any payload (e.g. showTitle), so we don't display
+*       welcome msg at this time.
+*   2.  JOIN: Can send payload, but cannot find ServerPlayer via
+*       Server.getPlayerList().getPlayer(UUID) - strange, so we store a temporary
+*       ServerPlayer entity when INIT.
+*/
+
 public class EventHandler {
     private final AuthService service;
-    private final SessionService sessionService;
 
-    public EventHandler(AuthService service, SessionService sessionService) {
+    public EventHandler(AuthService service) {
         this.service = service;
-        this.sessionService = sessionService;
     }
 
     public void register() {
-        ServerPlayConnectionEvents.JOIN.register((listener, sender, server) ->
-            onPlayerJoin(listener.getPlayer()));
-        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) ->
-            onAllowChatMessage(sender.connection.getPlayer()));
-        SatelliteEvents.ALLOW_EXECUTE_COMMAND.register(((player, packet) ->
-            onAllowExecuteCommand(player, packet.command())));
-        SatelliteEvents.ADDING_WHITELIST.register(((ctx, gameProfile) ->
-            onAddingWhitelist(ctx.getPlayer(), gameProfile.getName())));
+        ServerPlayConnectionEvents.JOIN.register((listener, sender, server) -> onPlayerJoin(listener.getPlayer()));
+        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> onAllowChatMessage(sender.connection.getPlayer()));
+        SatelliteEvents.ALLOW_EXECUTE_COMMAND.register(((player, packet) -> onAllowExecuteCommand(player, packet.command())));
+        SatelliteEvents.ADDING_WHITELIST.register(((ctx, gameProfile) -> onAddingWhitelist(ctx.getPlayer(), gameProfile.getName())));
     }
 
     private void onPlayerJoin(ServerPlayer player) {
         if (Satellite.isSingleGame()) return;
-        PlayerSession session = sessionService.getSession(player);
+        AuthSession session = service.getSession(player);
         if (session == null) return;
 
         session.setLoggedIn(false);
@@ -57,7 +59,7 @@ public class EventHandler {
 
     private boolean onAllowChatMessage(ServerPlayer player) {
         if (Satellite.isSingleGame()) return true;
-        PlayerSession session = sessionService.getSession(player);
+        AuthSession session = service.getSession(player);
         if (session == null) return false;
         if (session.isLoggedIn()) return true;
 
@@ -67,7 +69,7 @@ public class EventHandler {
 
     private boolean onAllowExecuteCommand(ServerPlayer player, String command) {
         if (Satellite.isSingleGame()) return true;
-        PlayerSession session = sessionService.getSession(player);
+        AuthSession session = service.getSession(player);
         if (session == null) return false;
         if (session.isLoggedIn()) return true;
 

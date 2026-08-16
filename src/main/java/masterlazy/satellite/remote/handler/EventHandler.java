@@ -1,5 +1,6 @@
 package masterlazy.satellite.remote.handler;
 
+import masterlazy.satellite.Satellite;
 import masterlazy.satellite.remote.RemoteService;
 import masterlazy.satellite.remote.payload.HelloS2CPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -20,7 +21,9 @@ public class EventHandler {
 
     private void onPlayerJoin(ServerPlayer player) {
         if (ServerPlayNetworking.canSend(player, HelloS2CPayload.ID.id())) {
-            ServerPlayNetworking.send(player, new HelloS2CPayload(service.VERSION));
+            HelloS2CPayload payload = new HelloS2CPayload(service.VERSION);
+            ServerPlayNetworking.send(player, payload);
+            Satellite.B_LOGGER.debug("%s << HelloS2CPayload:\n%s", player.getName().getString(), Satellite.GSON.toJson(payload));
         }
     }
 }
