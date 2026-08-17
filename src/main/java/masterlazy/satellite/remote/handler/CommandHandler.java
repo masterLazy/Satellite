@@ -5,6 +5,7 @@ import masterlazy.satellite.auth.AuthService;
 import masterlazy.satellite.auth.AuthSession;
 import masterlazy.satellite.remote.RemoteService;
 import masterlazy.satellite.remote.FeedManager;
+import masterlazy.satellite.remote.RemoteUtils;
 import masterlazy.satellite.remote.model.CommandEnum;
 import masterlazy.satellite.remote.model.Status;
 import masterlazy.satellite.remote.payload.CommandC2SPayload;
@@ -12,6 +13,13 @@ import masterlazy.satellite.remote.payload.CommandS2CPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.Context;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class CommandHandler {
@@ -33,7 +41,6 @@ public class CommandHandler {
 
     public void handleCommandC2S(CommandC2SPayload payload, Context context) {
         Satellite.B_LOGGER.debug("%s >> CommandC2SPayload:\n%s", context.player().getName().getString(), Satellite.GSON.toJson(payload));
-        // Basic verification
         if (payload.command() == CommandEnum.AUTHORIZE) {
             handleAuthorize(payload, context);
             return;
@@ -43,16 +50,18 @@ public class CommandHandler {
             sendS2C(payload, context, status, null);
             return;
         }
-        // End of basic verification
         CommandEnum command = payload.command();
         if (command == CommandEnum.UNKNOWN) {
             sendS2C(payload, context, Status.BAD_REQUEST, null);
             return;
         }
+        // Deliver to handlers
         if (command == CommandEnum.SUBSCRIBE || command == CommandEnum.UNSUBSCRIBE || command == CommandEnum.FETCH_1000) {
             handleConsoleFeed(payload, context);
         } else if (command == CommandEnum.EXECUTE) {
             handleExecute(payload, context);
+        } else if (command == CommandEnum.LIST || command == CommandEnum.MOVE || command == CommandEnum.COPY || command == CommandEnum.REMOVE) {
+            handleFileCommand(payload, context);
         }
     }
 
@@ -96,6 +105,10 @@ public class CommandHandler {
     }
 
     public void handleConsoleFeed(CommandC2SPayload payload, Context context) {
+        if (!feedManager.isRemoteConsoleAvailable()) {
+            sendS2C(payload, context, Status.INTERNAL_SERVER_ERROR, null);
+            return;
+        }
         switch (payload.command()) {
             case SUBSCRIBE -> {
                 if (feedManager.subscribe(payload.token())) {
@@ -124,5 +137,53 @@ public class CommandHandler {
         }
         Satellite.execute(payload.args()[0]);
         sendS2C(payload, context, Status.OK, null);
+    }
+
+    public void handleFileCommand(CommandC2SPayload payload, Context context) {
+        switch (payload.command()) {
+            case LIST -> {
+                if (payload.args().length < 1) {
+                    sendS2C(payload, context, Status.BAD_REQUEST, null);
+                    break;
+                }
+                Path path = verifyPath(payload.args()[0], payload, context);
+                if (path == null) break;
+                try (var stream = Files.list(path)) {
+                    List<Path> allChildren = stream.toList();
+                    List<String> subDirs = allChildren.stream()
+                            .filter(Files::isDirectory)
+                            .map(p -> p.getFileName().toString())
+                            .toList();
+                    List<String> subFiles = allChildren.stream()
+                            .filter(Files::isRegularFile)
+                            .map(p -> p.getFileName().toString())
+                            .toList();
+                    List<String> paths = new ArrayList<>();
+                    paths.add(((Integer) subDirs.size()).toString());
+                    paths.addAll(subDirs);
+                    paths.addAll(subFiles);
+                    sendS2C(payload, context, Status.OK, paths.toArray(String[]::new));
+                } catch (IOException e) {
+                    sendS2C(payload, context, Status.INTERNAL_SERVER_ERROR, null);
+                }
+            }
+        }
+    }
+
+    @Nullable
+    private Path verifyPath(String p, CommandC2SPayload payload, Context context) {
+        if (!p.startsWith("/")) {
+            sendS2C(payload, context, Status.NOT_FOUND, null);
+            return null;
+        }
+        Path path = Paths.get(p.substring(1));
+        if (!RemoteUtils.isSubDirectory(Paths.get(""), path) && !p.equals("/")) { // Not sub folder
+            sendS2C(payload, context, Status.FORBIDDEN, null);
+            return null;
+        } else if (!Files.exists(path)) {
+            sendS2C(payload, context, Status.NOT_FOUND, null);
+            return null;
+        }
+        return path;
     }
 }

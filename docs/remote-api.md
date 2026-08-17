@@ -47,14 +47,17 @@ public record CommandS2CPayload(
 
 以下是 `command` 取不同值时的逻辑。
 
-| command     | 作用                     | args       | results      | 备注                                                         |
-| ----------- | ------------------------ | ---------- | ------------ | ------------------------------------------------------------ |
-| AUTHORIZE   | 获取会话令牌             | `password` | `token|null` | 密码错误：`UNAUTHORIZED`；权限不足：`FORBIDDEN`；单人模式不鉴权 |
-| SUBSCRIBE   | 订阅控制台输出           | `null`     | `none`       |                                                              |
-| UNSUBSCRIBE | 取消订阅控制台输出       | `null`     | `none`       |                                                              |
-| FETCH_1000  | 拉取最近1000行控制台输出 | `null`     | `content`    | 每行最多1024个字符                                           |
-| EXECUTE     | 以服务器身份执行命令     | `command`  | `null`       |                                                              |
-|             |                          |            |              |                                                              |
+| command     | 作用                     | args       | results          | 备注                                                         |
+| ----------- | ------------------------ | ---------- | ---------------- | ------------------------------------------------------------ |
+| AUTHORIZE   | 获取会话令牌             | `password` | `token|null`     | 密码错误：`UNAUTHORIZED`；权限不足：`FORBIDDEN`；单人模式不鉴权 |
+| SUBSCRIBE   | 订阅控制台输出           | `null`     | `none`           |                                                              |
+| UNSUBSCRIBE | 取消订阅控制台输出       | `null`     | `none`           |                                                              |
+| FETCH_1000  | 拉取最近1000行控制台输出 | `null`     | `content`        | 每行最多1024个字符                                           |
+| EXECUTE     | 以服务器身份执行命令     | `command`  | `null`           |                                                              |
+| LIST        | 列出目录下的目录和文件   | `path`     | `dirCount,paths` | 目录不存在：`NOT_FOUND`；`paths` 先返回所有目录，再返回文件  |
+| MOVE        | 移动文件（含重命名）     |            |                  |                                                              |
+| COPY        | 复制文件/目录            |            |                  |                                                              |
+| REMOVE      | 删除文件/目录            |            |                  |                                                              |
 
 
 

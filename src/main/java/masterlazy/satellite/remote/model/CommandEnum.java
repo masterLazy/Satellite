@@ -8,6 +8,11 @@ public enum CommandEnum {
     FETCH_1000,
     EXECUTE,
 
+    LIST,
+    MOVE,
+    COPY,
+    REMOVE,
+
     UNKNOWN;
 
     public static CommandEnum from(String string) {

@@ -30,7 +30,7 @@ public class ResponseManager <PayloadT extends HasRequestId> {
         }
     }
 
-    public Future<PayloadT> responseFor(UUID requestId, long timeoutSeconds) {
+    public Future<PayloadT> responseFor(UUID requestId) {
         PayloadT early = earlyResponses.remove(requestId);
         if (early != null) {
             return CompletableFuture.completedFuture(early);
@@ -49,7 +49,6 @@ public class ResponseManager <PayloadT extends HasRequestId> {
                 pendingFutures.remove(requestId, future);
             }
         });
-        future.orTimeout(timeoutSeconds, TimeUnit.SECONDS);
         return future;
     }
 }

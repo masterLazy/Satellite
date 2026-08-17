@@ -119,7 +119,8 @@ public class SatelliteShell implements Command, Runnable {
                 }
                 if (password.trim().isEmpty()) continue;
                 try {
-                    CommandS2CPayload response = SatelliteClient.remoteClient.sendCommand("", CommandEnum.AUTHORIZE, new String[]{password}).get();
+                    CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait("", CommandEnum.AUTHORIZE, new String[]{password});
+                    if (response == null) return null;
                     if (response.status() == Status.OK) {
                         if (response.results().length < 1) {
                             writeAndFlush("Authorization failed: Server didn't respond a token.\r\n");

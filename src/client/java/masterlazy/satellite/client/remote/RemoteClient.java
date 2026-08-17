@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RemoteClient {
     private final SshServer sshServer = new SshServer();
@@ -22,8 +23,11 @@ public class RemoteClient {
     private final BlockingQueue<ConsoleFeedS2CPayload> feedQueue = new LinkedBlockingQueue<>();
 
     public final String VERSION = "v1";
-    public final int COMMAND_TIMEOUT_SECONDS = 5;
+    public final int COMMAND_TIMEOUT_SECONDS = 10;
     public final int FEED_TIMEOUT_MILLISECONDS = 10;
+
+    private final char[] spinner = {'/', '-', '\\', '|'};
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public boolean isRemoteAvailable() { return remoteAvailable; }
 
@@ -54,11 +58,30 @@ public class RemoteClient {
         feedQueue.offer(payload);
     }
 
-    public Future<CommandS2CPayload> sendCommand(String token, CommandEnum command, @Nullable String[] args) {
+    /**
+     * Send CommandC2SPayload and wait for response
+     * @return `null` if response timeout
+     */
+    @Nullable
+    public CommandS2CPayload sendAndWait(String token, CommandEnum command, @Nullable String[] args) throws InterruptedException, ExecutionException {
+        AtomicInteger index = new AtomicInteger(0);
+        ScheduledFuture<?> animTask = scheduler.scheduleAtFixedRate(() -> {
+            System.out.print("\r" + spinner[index.getAndIncrement() % spinner.length] + " ");
+        }, 0, 100, TimeUnit.MILLISECONDS);
         UUID requestId = UUID.randomUUID();
-        Future<CommandS2CPayload> future = commandResponseManager.responseFor(requestId, COMMAND_TIMEOUT_SECONDS);
+        Future<CommandS2CPayload> future = commandResponseManager.responseFor(requestId);
         ClientPlayNetworking.send(new CommandC2SPayload(requestId, token, command, args == null ? new String[0] : args));
-        return future;
+        try {
+            return future.get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            animTask.cancel(true);
+            System.out.println("\r\033[31mResponse timeout after "+COMMAND_TIMEOUT_SECONDS+"s\033[0m");
+            future.cancel(true);
+            return null;
+        } finally {
+            animTask.cancel(true);
+            System.out.print("\r  \r");
+        }
     }
 
     @Nullable

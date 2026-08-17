@@ -14,9 +14,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 // TODO: 增加定时清理无效会话逻辑
 public class FeedManager {
@@ -38,6 +36,8 @@ public class FeedManager {
     private static final int MAX_LINE_LENGTH = 1024;
     private static final int MAX_LOG_LENGTH = 1024 * 1024;
 
+    private final ScheduledExecutorService watcherScheduler = Executors.newSingleThreadScheduledExecutor();
+
     public FeedManager(RemoteSessionManager remoteSessionManager) {
         this.remoteSessionManager = remoteSessionManager;
     }
@@ -57,8 +57,13 @@ public class FeedManager {
             return;
         }
 
-        ExecutorService watcherThreadPool = Executors.newSingleThreadExecutor();
-        CompletableFuture.runAsync(this::watcherLoop, watcherThreadPool);
+        watcherScheduler.scheduleAtFixedRate(
+                this::watcherTick,
+                0,
+                POLL_INTERVAL_MILLISECONDS,
+                TimeUnit.MILLISECONDS
+        );
+        Satellite.LOGGER.info("[Satellite] Log watcher scheduler started");
         remoteConsoleAvailable = true;
     }
 
@@ -103,61 +108,48 @@ public class FeedManager {
         });
     }
 
-    private void watcherLoop() {
-        Satellite.LOGGER.info("[Satellite] Log watcher loop started");
-        while (!Thread.interrupted()) {
-            try {
-                // File not exists, wait
-                if (!Files.exists(logFile)) {
-                    Thread.sleep(POLL_INTERVAL_MILLISECONDS);
-                    continue;
-                }
-
-                long size = Files.size(logFile);
-
-                // First time, read but not feed
-                if (lastSize < 0) {
-                    logContent = Files.readString(logFile);
-                    lastSize = size;
-                    Thread.sleep(POLL_INTERVAL_MILLISECONDS);
-                    continue;
-                }
-
-                /* Factors to influence `size`:
-                 *   1. Appended new log
-                 *   2. Minecraft started a new log file when 23:59 -> 0:00
-                 *   3. Other edit to file (we can't prevent)
-                 */
-                if (size != lastSize) {
-                    String appended;
-                    if (size > lastSize) {
-                        appended = readFrom(logFile, lastSize, size);
-                    } else {
-                        appended = Files.readString(logFile);
-                    }
-                    logContent += appended;
-                    if (logContent.length() > MAX_LOG_LENGTH) {
-                        logContent = logContent.substring(logContent.length() - MAX_LOG_LENGTH);
-                    }
-                    lastSize = size;
-                    last1000LineAt = -1;
-                    sendFeed(appended);
-                }
-                Thread.sleep(POLL_INTERVAL_MILLISECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            } catch (IOException e) {
-                Satellite.LOGGER.error("[Satellite] Failed to tail {}", FILE_PATH, e);
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+    private void watcherTick() {
+        try {
+            // File not exists
+            if (!Files.exists(logFile)) {
+                return;
             }
+
+            long size = Files.size(logFile);
+
+            // First time, read but not feed
+            if (lastSize < 0) {
+                logContent = Files.readString(logFile);
+                lastSize = size;
+                return;
+            }
+
+            /* Factors to influence `size`:
+             *   1. Appended new log
+             *   2. Minecraft started a new log file when 23:59 -> 0:00
+             *   3. Other edit to file (we can't prevent)
+             */
+            if (size != lastSize) {
+                String appended;
+                if (size > lastSize) {
+                    appended = readFrom(logFile, lastSize, size);
+                } else {
+                    appended = Files.readString(logFile);
+                }
+                logContent += appended;
+                if (logContent.length() > MAX_LOG_LENGTH) {
+                    logContent = logContent.substring(logContent.length() - MAX_LOG_LENGTH);
+                }
+                lastSize = size;
+                last1000LineAt = -1;
+                sendFeed(appended);
+            }
+        } catch (IOException e) {
+            Satellite.LOGGER.error("[Satellite] Failed to tail {}", FILE_PATH, e);
+        } catch (Exception e) {
+            Satellite.LOGGER.error("[Satellite] Exception occurred when watching log; watcher is exiting {}", FILE_PATH, e);
+            remoteConsoleAvailable = false;
         }
-        Satellite.LOGGER.info("[Satellite] Log watcher loop stopped");
     }
 
     private String readFrom(Path path, long from, long to) throws IOException {
