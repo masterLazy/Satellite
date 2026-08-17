@@ -32,7 +32,7 @@ public class FileCLI {
         if (response == null) {
             System.out.println("Path not found");
             if (!cli.workingDir.isEmpty()) {
-                cli.workingDir.remove(cli.workingDir.getLast());
+                cli.workingDir.remove(cli.workingDir.size()-1);
             }
             return;
         }
@@ -78,7 +78,7 @@ public class FileCLI {
                     System.out.println("Directory not found");
                     return;
                 }
-                goal.removeLast();
+                goal.remove(goal.size()-1);
                 continue;
             }
             if (s.isEmpty()) {
