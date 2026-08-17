@@ -1,4 +1,4 @@
-package masterlazy.satellite;
+package masterlazy.satellite.remote;
 
 import java.util.UUID;
 

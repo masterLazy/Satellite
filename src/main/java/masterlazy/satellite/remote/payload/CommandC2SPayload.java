@@ -1,8 +1,8 @@
 package masterlazy.satellite.remote.payload;
 
-import masterlazy.satellite.HasRequestId;
+import masterlazy.satellite.remote.HasRequestId;
 import masterlazy.satellite.Satellite;
-import masterlazy.satellite.remote.Codecs;
+import masterlazy.satellite.remote.HasToken;
 import masterlazy.satellite.remote.model.CommandEnum;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -17,7 +17,7 @@ public record CommandC2SPayload(
         String token,
         CommandEnum command,
         String[] args
-) implements CustomPacketPayload, HasRequestId {
+) implements CustomPacketPayload, HasRequestId, HasToken {
     private static final String path = "remote_command_c2s";
     public static final StreamCodec<RegistryFriendlyByteBuf, CommandC2SPayload> CODEC =
             StreamCodec.composite(

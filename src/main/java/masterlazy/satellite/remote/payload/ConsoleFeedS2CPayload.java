@@ -1,7 +1,6 @@
 package masterlazy.satellite.remote.payload;
 
 import masterlazy.satellite.Satellite;
-import masterlazy.satellite.remote.Codecs;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;

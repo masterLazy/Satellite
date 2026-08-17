@@ -1,4 +1,4 @@
-package masterlazy.satellite.remote;
+package masterlazy.satellite.remote.payload;
 
 import io.netty.buffer.ByteBuf;
 import masterlazy.satellite.remote.model.CommandEnum;

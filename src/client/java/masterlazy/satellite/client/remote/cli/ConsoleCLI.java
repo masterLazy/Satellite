@@ -117,6 +117,8 @@ public class ConsoleCLI {
                                 cursorAt--;
                                 restoreInput = true;
                             }
+                        } else if (c == '\t') {
+                            continue;
                         } else {
                             sb.insert(cursorAt, (char) c);
                             cursorAt++;

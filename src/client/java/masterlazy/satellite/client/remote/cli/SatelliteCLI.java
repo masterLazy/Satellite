@@ -1,6 +1,7 @@
 package masterlazy.satellite.client.remote.cli;
 
 import masterlazy.satellite.client.SatelliteClient;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
 import java.io.BufferedReader;
@@ -31,11 +32,9 @@ public class SatelliteCLI {
     }
 
     public String getWorkingDir() {
-        if (workingDir.isEmpty()) return "/";
         StringBuilder sb = new StringBuilder();
-        for (String s : workingDir) {
-            sb.append('/').append(s);
-        }
+        for (String s : workingDir) sb.append('/').append(s);
+        if (sb.isEmpty()) sb.append('/');
         return sb.toString();
     }
 
@@ -61,5 +60,12 @@ public class SatelliteCLI {
     @Command(name = "ls", description = "List sub-directories and files in working directory.")
     public void ls() throws ExecutionException, InterruptedException {
         fileCLI.ls();
+    }
+
+    @Command(name = "cd", description = "Change working directory.")
+    public void cd(
+            @CommandLine.Parameters(paramLabel = "<sub-dir>", description = "subdirectory") String subdir
+    ) throws ExecutionException, InterruptedException {
+        fileCLI.cd(subdir);
     }
 }

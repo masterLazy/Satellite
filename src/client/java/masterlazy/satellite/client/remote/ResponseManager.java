@@ -1,6 +1,6 @@
 package masterlazy.satellite.client.remote;
 
-import masterlazy.satellite.HasRequestId;
+import masterlazy.satellite.remote.HasRequestId;
 import masterlazy.satellite.Satellite;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context;
 
@@ -8,7 +8,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 public class ResponseManager <PayloadT extends HasRequestId> {
     private final ConcurrentHashMap<UUID, CompletableFuture<PayloadT>> pendingFutures = new ConcurrentHashMap<>();

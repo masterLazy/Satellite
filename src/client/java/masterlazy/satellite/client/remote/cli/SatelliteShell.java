@@ -216,6 +216,8 @@ public class SatelliteShell implements Command, Runnable {
                     }
                     out.flush();
                 }
+            } else if (c == '\t') {
+                continue;
             } else {
                 sb.insert(cursorAt, (char) c);
                 // Refresh
