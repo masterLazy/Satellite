@@ -21,7 +21,7 @@ public class FileCLI {
         this.ctx = ctx;
     }
 
-    void ls(boolean detailed) throws ExecutionException, InterruptedException {
+    public void ls(boolean detailed) throws ExecutionException, InterruptedException {
         ListResponse response = list(cli.getWorkingDir(), detailed);
         if (response == null) {
             ctx.println("Path not found");
@@ -60,51 +60,79 @@ public class FileCLI {
         ctx.flush();
     }
 
-    void cd(String subdir) throws ExecutionException, InterruptedException {
-        String[] given = subdir.split("/");
+    public void cd(String subdir) throws ExecutionException, InterruptedException {
+        String sd = resolve(subdir);
+        if (sd == null) return;
+        ListResponse response = list(sd, false);
+        if (response == null) {
+            ctx.println("Directory not found");
+        } else {
+            cli.workingDir.clear();
+            cli.workingDir.addAll(List.of(sd.substring(1).split("/")));
+        }
+    }
+
+    public void mvcp(String src, String dest, boolean isCopy, boolean recursive) throws ExecutionException, InterruptedException  {
+        CommandEnum command = isCopy ? CommandEnum.COPY : CommandEnum.MOVE;
+        String s = resolve(src);
+        if (s == null) return;
+        String d = resolve(dest);
+        if (d == null) return;
+        CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait(ctx, command, new String[]{s, d, recursive?"r":""});
+        if (response == null) return;
+        if (response.status() == Status.UNAUTHORIZED) {
+            ctx.renewToken();
+            response = SatelliteClient.remoteClient.sendAndWait(ctx, command, new String[]{s, d, recursive?"r":""});
+            if (response == null) return;
+            if (response.status() == Status.UNAUTHORIZED) throw new UnauthorizedException();
+        }
+        if (response.status() != Status.OK) {
+            if (response.results().length < 1) {
+                ctx.println("\033[31mFailed to "+(isCopy?"copy":"move")+": "+response.status().name() + "\033[0m");
+            } else {
+                ctx.println("\033[31mFailed to " + (isCopy ? "copy" : "move") + ": " + response.status().name() + " " + response.results()[0] + "\033[0m");
+            }
+        }
+        ctx.println("Done.");
+    }
+
+    private @Nullable String resolve(String path) {
+        String[] given = path.split("/");
         List<String> goal = new ArrayList<>();
-        if (!subdir.startsWith("/")) goal.addAll(cli.workingDir);
+        if (!path.startsWith("/") && !cli.getWorkingDir().equals("/")) goal.addAll(cli.workingDir);
         // Resolve path
         for (String s : given) {
             if (s.equals(".")) continue;
             if (s.equals("..")) {
                 if (goal.isEmpty()) {
-                    ctx.println("Directory not found");
-                    return;
+                    ctx.println("Path not found");
+                    return null;
                 }
                 goal.remove(goal.size()-1);
                 continue;
             }
             if (s.isEmpty()) {
-                ctx.println("Directory not found");
-                return;
+                ctx.println("Path not found");
+                return null;
             }
             goal.add(s);
         }
-        // Make request
         StringBuilder sb = new StringBuilder();
         for (String s : goal) sb.append('/').append(s);
         if (sb.isEmpty()) sb.append('/');
-        ListResponse response = list(sb.toString(), false);
-        if (response == null) {
-            ctx.println("Directory not found");
-        } else {
-            cli.workingDir.clear();
-            cli.workingDir.addAll(goal);
-        }
+        return sb.toString();
     }
 
     private record ListResponse(int dirCount, String[] paths) {}
 
-    @Nullable
-    private FileCLI.ListResponse list(String dir, boolean detailed) throws ExecutionException, InterruptedException {
+    private @Nullable FileCLI.ListResponse list(String dir, boolean detailed) throws ExecutionException, InterruptedException {
         CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait(ctx, CommandEnum.LIST, new String[]{dir, detailed ? "l" : ""});
         if (response == null) return null;
         if (response.status() == Status.UNAUTHORIZED) {
             ctx.renewToken();
-            if (ctx.token() == null) throw new UnauthorizedException();
             response = SatelliteClient.remoteClient.sendAndWait(ctx, CommandEnum.LIST, new String[]{dir, detailed ? "l" : ""});
             if (response == null) return null;
+            if (response.status() == Status.UNAUTHORIZED) throw new UnauthorizedException();
         }
         if (response.status() == Status.NOT_FOUND) {
             return null;

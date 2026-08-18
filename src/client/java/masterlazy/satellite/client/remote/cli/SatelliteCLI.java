@@ -63,8 +63,27 @@ public class SatelliteCLI {
     @SuppressWarnings("unused")
     @Command(name = "cd", description = "Change working directory.")
     public void cd(
-            @CommandLine.Parameters(paramLabel = "<sub-dir>", description = "subdirectory") String subdir
+            @CommandLine.Parameters(paramLabel = "<subdirectory>") String subdir
     ) throws ExecutionException, InterruptedException {
         fileCLI.cd(subdir);
+    }
+
+    @SuppressWarnings("unused")
+    @Command(name = "mv", description = "Move file or directory, ALWAYS REPLACE EXISTED FILES")
+    public void mv(
+            @CommandLine.Parameters(paramLabel = "<source>") String src,
+            @CommandLine.Parameters(paramLabel = "<destination>") String dest
+    ) throws ExecutionException, InterruptedException {
+        fileCLI.mvcp(src, dest, false, false);
+    }
+
+    @SuppressWarnings("unused")
+    @Command(name = "cp", description = "Copy file or directory, ALWAYS REPLACE EXISTED FILES")
+    public void cp(
+            @CommandLine.Parameters(paramLabel = "<source>") String src,
+            @CommandLine.Parameters(paramLabel = "<destination>") String dest,
+            @CommandLine.Option(names = {"-r", "--recursive"}, description = "recursively copy") boolean recursive
+    ) throws ExecutionException, InterruptedException {
+        fileCLI.mvcp(src, dest, true, recursive);
     }
 }

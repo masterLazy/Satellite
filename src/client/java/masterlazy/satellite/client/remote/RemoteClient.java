@@ -1,8 +1,8 @@
 package masterlazy.satellite.client.remote;
 
 import masterlazy.satellite.client.remote.cli.ShellContext;
-import masterlazy.satellite.client.remote.command.SatelliteCommand;
 import masterlazy.satellite.client.remote.cli.SshServer;
+import masterlazy.satellite.client.remote.command.SatelliteCommand;
 import masterlazy.satellite.remote.RemoteService;
 import masterlazy.satellite.remote.model.CommandEnum;
 import masterlazy.satellite.remote.payload.*;
@@ -24,7 +24,7 @@ public class RemoteClient {
     private final ResponseManager<CommandS2CPayload> commandResponseManager = new ResponseManager<>();
     private final BlockingQueue<ConsoleFeedS2CPayload> feedQueue = new LinkedBlockingQueue<>();
 
-    public final int COMMAND_TIMEOUT_SECONDS = 10;
+    public final int COMMAND_TIMEOUT_SECONDS = 30;
     public final int FEED_TIMEOUT_MILLISECONDS = 10;
 
     private final char[] spinner = {'/', '-', '\\', '|'};

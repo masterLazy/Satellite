@@ -2,8 +2,8 @@ package masterlazy.satellite.client.remote.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import masterlazy.satellite.Satellite;
-import masterlazy.satellite.client.remote.cli.SshServer;
 import masterlazy.satellite.client.remote.RemoteClient;
+import masterlazy.satellite.client.remote.cli.SshServer;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
 
@@ -21,6 +21,10 @@ public class SatelliteCommand {
             return 1;
         })).then(literal("cli").then(literal("start").executes(ctx -> {
             FabricClientCommandSource source = ctx.getSource();
+            if (sshServer.isRunning()) {
+                source.sendFeedback(Component.literal(Satellite.lang("remote.cli.started")));
+                return 1;
+            }
             int port = sshServer.start();
             if (port != -1) {
                 source.sendFeedback(Component.literal(String.format(Satellite.lang("remote.cli.start"), port)));

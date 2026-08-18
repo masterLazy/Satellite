@@ -11,12 +11,14 @@ import masterlazy.satellite.remote.model.Request;
 import masterlazy.satellite.remote.model.Status;
 import masterlazy.satellite.remote.payload.CommandC2SPayload;
 import masterlazy.satellite.remote.payload.CommandS2CPayload;
+import org.apache.commons.io.file.PathUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -42,7 +44,8 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
                 .add(request -> service.verifyToken(request, s -> respond(request, s, null)))
                 .add(this::handleConsoleFeed)
                 .add(this::handleExecute)
-                .add(this::handleList);
+                .add(this::handleList)
+                .add(this::handleMoveCopy);
     }
 
     @Override
@@ -160,15 +163,15 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         if (args.length < 2) {
             return respond(request, Status.BAD_REQUEST, null);
         }
-        Path path = verifyPath(args[0], request);
+        Path path = getVerifiedPath(args[0]);
+        if (path == null || !Files.exists(path) || !Files.isDirectory(path)) {
+            return respond(request, Status.NOT_FOUND, null);
+        }
         String options = args[1];
-        if (path == null || options == null) {
+        if (options == null) {
             return respond(request, Status.BAD_REQUEST, null);
         }
         boolean detailed = options.contains("l");
-        if (!Files.isDirectory(path)) {
-            return respond(request, Status.NOT_FOUND, null);
-        }
         try (var stream = Files.list(path)) {
             List<Path> allChildren = stream.toList();
             List<String> subDirs = allChildren.stream()
@@ -187,6 +190,100 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         } catch (IOException e) {
             return respond(request, Status.INTERNAL_SERVER_ERROR, null);
         }
+    }
+
+    // Before writing this I can't imagine it's the most complex function!!!
+    public boolean handleMoveCopy(Request<CommandC2SPayload> request) {
+        CommandC2SPayload payload = request.payload();
+        if (payload.command() != CommandEnum.MOVE && payload.command() != CommandEnum.COPY) return false;
+        String[] args = payload.args();
+        if (args.length < 3) {
+            return respond(request, Status.BAD_REQUEST, null);
+        }
+        Path src = getVerifiedPath(args[0]);
+        Path dest = getVerifiedPath(args[1]);
+        boolean recursive = args[2].contains("r");
+        boolean isCopy = payload.command() == CommandEnum.COPY;
+        if (src == null || !Files.exists(src)) {
+            return respond(request, Status.NOT_FOUND, new String[]{"Source not found"});
+        }
+        if (dest == null) {
+            return respond(request, Status.FORBIDDEN, new String[]{"Destination is invalid"});
+        }
+        if (Files.isDirectory(src) && isCopy && !recursive) {
+            return respond(request, Status.FORBIDDEN, new String[]{"Source is directory"});
+        }
+        try {
+            if (Files.exists(dest) && Files.isSameFile(src, dest)) {
+                return respond(request, Status.FORBIDDEN, new String[]{"Source equals to destination"});
+            }
+            if (RemoteUtils.isSubDirectory(src, dest)) {
+                return respond(request, Status.FORBIDDEN, new String[]{
+                        isCopy ? "Cannot copy a directory into itself" : "Cannot move a directory into itself"
+                });
+            }
+            if (Files.isDirectory(src)) {
+                if (Files.exists(dest)) {
+                    if (Files.isDirectory(dest)) {
+                        Path target = Paths.get(dest.toString(), src.getFileName().toString());
+                        if (isCopy) {
+                            PathUtils.copyDirectory(src, target, StandardCopyOption.REPLACE_EXISTING);
+                        } else {
+                            Files.move(src, target, StandardCopyOption.REPLACE_EXISTING);
+                        }
+                    } else {
+                        return respond(request, Status.FORBIDDEN, new String[]{"Source is directory but destination is file"});
+                    }
+                } else {
+                    if (isCopy) {
+                        PathUtils.copyDirectory(src, dest);
+                    } else {
+                        Files.move(src, dest);
+                    }
+                }
+            } else {
+                if (Files.exists(dest)) {
+                    if (Files.isDirectory(dest)) {
+                        if (isCopy) {
+                            PathUtils.copyFileToDirectory(src, dest, StandardCopyOption.REPLACE_EXISTING);
+                        } else {
+                            // Cannot use Files.move()
+                            PathUtils.copyFileToDirectory(src, dest, StandardCopyOption.REPLACE_EXISTING);
+                            Files.delete(src);
+                        }
+                    } else {
+                        if (isCopy) {
+                            Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING);
+                        } else {
+                            Files.move(src, dest, StandardCopyOption.REPLACE_EXISTING);
+                        }
+                    }
+                } else {
+                    if (isCopy) {
+                        Files.copy(src, dest);
+                    } else {
+                        Files.move(src, dest);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            return respond(request, Status.INTERNAL_SERVER_ERROR, new String[]{e.toString()});
+        }
+        return respond(request, Status.OK, null);
+    }
+
+    // Helpers
+
+    // Must be subdirectory (may not exist)
+    private @Nullable Path getVerifiedPath(String p) {
+        if (!p.startsWith("/")) {
+            return null;
+        }
+        Path path = Paths.get(p.substring(1));
+        if (!RemoteUtils.isSubDirectory(Paths.get(""), path) && !p.equals("/")) {
+            return null;
+        }
+        return path;
     }
 
     private String pathToString(Path p, boolean detailed) {
@@ -209,24 +306,5 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
             }
         }
         return String.format("%s  %10s  %s", latestModified, fileSize, p.getFileName());
-    }
-
-    // Helpers
-
-    @Nullable
-    private Path verifyPath(String p, Request<CommandC2SPayload> request) {
-        if (!p.startsWith("/")) {
-            respond(request, Status.NOT_FOUND, null);
-            return null;
-        }
-        Path path = Paths.get(p.substring(1));
-        if (!RemoteUtils.isSubDirectory(Paths.get(""), path) && !p.equals("/")) { // Not sub folder
-            respond(request, Status.FORBIDDEN, null);
-            return null;
-        } else if (!Files.exists(path)) {
-            respond(request, Status.NOT_FOUND, null);
-            return null;
-        }
-        return path;
     }
 }

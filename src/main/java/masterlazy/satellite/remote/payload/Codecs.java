@@ -5,11 +5,8 @@ import masterlazy.satellite.remote.model.CommandEnum;
 import masterlazy.satellite.remote.model.Status;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import org.xerial.snappy.Snappy;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 public class Codecs {
@@ -39,43 +36,6 @@ public class Codecs {
     }, buf -> {
         String s = ByteBufCodecs.STRING_UTF8.decode(buf);
         return Status.from(s);
-    });
-
-    // Compressed byte[]
-    public static final StreamCodec<ByteBuf, byte[]> BYTES_COMPRESSED = StreamCodec.of((buf, load) -> {
-        try {
-            byte[] compressed = Snappy.compress(load);
-            buf.writeInt(compressed.length);
-            buf.writeBytes(compressed);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }, buf -> {
-        int length = buf.readInt();
-        try {
-            return Snappy.uncompress(buf.readBytes(length).array());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    });
-
-    // Compressed String
-    public static final StreamCodec<ByteBuf, String> STRING_UTF8_COMPRESSED = StreamCodec.of((buf, load) -> {
-        try {
-            byte[] compressed = Snappy.compress(load.getBytes(StandardCharsets.UTF_8));
-            buf.writeInt(compressed.length);
-            buf.writeBytes(compressed);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }, buf -> {
-        int length = buf.readInt();
-        try {
-            byte[] raw = Snappy.uncompress(buf.readBytes(length).array());
-            return new String(raw, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     });
 
     // String[]

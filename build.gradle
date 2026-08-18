@@ -38,9 +38,7 @@ dependencies {
 	include(modImplementation "org.apache.sshd:sshd-core:2.15.0")
 	include(modImplementation "org.apache.sshd:sshd-common:2.15.0")
 	include(modImplementation "info.picocli:picocli:4.7.7")
-
-	// Compression
-	include(modImplementation 'org.xerial.snappy:snappy-java:1.1.10.5')
+	include(modImplementation "commons-io:commons-io:2.20.0")
 }
 
 processResources {

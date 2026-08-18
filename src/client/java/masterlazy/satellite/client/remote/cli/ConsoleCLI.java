@@ -93,7 +93,7 @@ public class ConsoleCLI {
                             }
                             enteringSeq = false;
                         } else if (c == '\r' || c == '\n') {
-                            if (sb.toString().equalsIgnoreCase("quit")) {
+                            if (sb.toString().equalsIgnoreCase("exit")) {
                                 ctx.print("\r\n");
                                 break;
                             }

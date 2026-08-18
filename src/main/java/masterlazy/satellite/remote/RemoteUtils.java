@@ -1,7 +1,5 @@
 package masterlazy.satellite.remote;
 
-import java.io.IOException;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.text.DecimalFormat;
@@ -18,13 +16,9 @@ public class RemoteUtils {
     }
 
     public static boolean isSubDirectory(Path parent, Path child) {
-        try {
-            Path parentReal = parent.toRealPath(LinkOption.NOFOLLOW_LINKS);
-            Path childReal = child.toRealPath(LinkOption.NOFOLLOW_LINKS);
-            return childReal.startsWith(parentReal) && !childReal.equals(parentReal);
-        } catch (IOException e) {
-            return false;
-        }
+        Path parentReal = parent.toAbsolutePath().normalize();
+        Path childReal = child.toAbsolutePath().normalize();
+        return childReal.startsWith(parentReal) && !childReal.equals(parentReal);
     }
 
     public static String bytesToString(long bytes) {
