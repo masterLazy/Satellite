@@ -16,12 +16,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SatelliteShell implements Command, Runnable {
+public class SatelliteShell implements Command, Runnable, ShellContext {
     private InputStream in;
     private OutputStream out;
     private OutputStream err;
     private ExitCallback callback;
     private Thread thread;
+
+    private String myToken = "";
 
     private BufferedReader reader;
     private final List<String> inputHistory = new ArrayList<>();
@@ -68,12 +70,12 @@ public class SatelliteShell implements Command, Runnable {
 
             reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
 
-            SatelliteCLI cli = new SatelliteCLI(this::authorize, reader, out);
+            SatelliteCLI cli = new SatelliteCLI(this);
             CommandLine cmd = new CommandLine(cli);
             cmd.setOut(new PrintWriter(out, true));
             cmd.setErr(new PrintWriter(err, true));
 
-            writeAndFlush("\033[2J\033[H"); // Clear screen
+            print("\033[2J\033[H"); // Clear screen
             String welcome = """
                     Welcome to \r
                       \033[36m███████╗ █████╗ ████████╗███████╗██╗     ██╗     ██╗████████╗███████╗\033[0m     ██████╗██╗     ██╗\r
@@ -83,11 +85,11 @@ public class SatelliteShell implements Command, Runnable {
                       \033[36m███████║██║  ██║   ██║   ███████╗███████╗███████╗██║   ██║   ███████╗\033[0m    ╚██████╗███████╗██║\r
                       \033[36m╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚══════╝╚══════╝╚═╝   ╚═╝   ╚══════╝\033[0m     ╚═════╝╚══════╝╚═╝\r
                     """;
-            writeAndFlush(welcome);
-            writeAndFlush("Type 'exit' to quit; type '-h' for usage.\r\n\r\n");
+            print(welcome);
+            print("Type 'exit' to quit; type '-h' for usage.\r\n\r\n");
 
             while (!Thread.currentThread().isInterrupted()) {
-                writeAndFlush(cli.getPrompt());
+                print(cli.getPrompt());
                 String line = readLineWithEcho(false);
                 if (line == null || "exit".equalsIgnoreCase(line.trim())) {
                     break;
@@ -107,33 +109,38 @@ public class SatelliteShell implements Command, Runnable {
         }
     }
 
-    @Nullable
-    private String authorize() {
+    @Nullable public String token() { return myToken; }
+
+    public BufferedReader getReader() { return reader; }
+
+    public void renewToken() {
         try {
             while (!Thread.currentThread().isInterrupted()) {
-                writeAndFlush("\r\n[Authorize] Password for '" + SatelliteClient.getUserName() + "': ");
+                print("\r\n[Authorize] Password for '" + SatelliteClient.getUserName() + "': ");
                 String password = readLineWithEcho(true);
                 if (password == null) {
-                    writeAndFlush("\r\n Authorization failed");
+                    print("\r\n Authorization failed");
                     break;
                 }
                 if (password.trim().isEmpty()) continue;
                 try {
-                    CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait("", CommandEnum.AUTHORIZE, new String[]{password});
-                    if (response == null) return null;
-                    if (response.status() == Status.OK) {
+                    CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait(this, CommandEnum.AUTHORIZE, new String[]{password});
+                    if (response == null) {
+                        break;
+                    } else if (response.status() == Status.OK) {
                         if (response.results().length < 1) {
-                            writeAndFlush("Authorization failed: Server didn't respond a token.\r\n");
+                            println("Authorization failed: Server didn't respond a token.");
                             continue;
                         }
-                        writeAndFlush("Success.\r\n");
-                        return response.results()[0];
+                        println("Success.");
+                        myToken = response.results()[0];
+                        return;
                     } else if (response.status() == Status.UNAUTHORIZED) {
-                        writeAndFlush("Wrong password.\r\n");
+                        println("Wrong password.");
                     } else if (response.status() == Status.TOO_MANY_REQUEST) {
-                        writeAndFlush("\033[31mAuthorization rate limit exceeded. Try later.\033[0m\r\n");
+                        println("\033[31mAuthorization rate limit exceeded. Try later.\033[0m");
                     } else {
-                        writeAndFlush("Authorization failed: " + response.status().name() + "\r\n");
+                        println("Authorization failed: " + response.status().name());
                     }
                 } catch (Exception e) {
                     err.write(("\033[31mError: " + e.getMessage() + "\033[0m\r\n").getBytes(StandardCharsets.UTF_8));
@@ -143,16 +150,19 @@ public class SatelliteShell implements Command, Runnable {
             }
         } catch (Exception ignored) {
         }
-        return null;
+        myToken = null;
     }
 
-    private void writeAndFlush(String s) throws IOException {
-        out.write(s.getBytes(StandardCharsets.UTF_8));
-        out.flush();
+    public void write(String s) {
+        try {
+            out.write(s.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException ignored) {}
     }
 
-    private void write(String s) throws IOException {
-        out.write(s.getBytes(StandardCharsets.UTF_8));
+    public void flush() {
+        try {
+            out.flush();
+        } catch (IOException ignored) {}
     }
 
     @Nullable
@@ -168,16 +178,16 @@ public class SatelliteShell implements Command, Runnable {
                 enteredEsc = false;
             } else if (enteringSeq) {
                 if (c == 'D' && cursorAt > 0) { // Left
-                    writeAndFlush("\b");
+                    print("\b");
                     cursorAt--;
                 } else if (c == 'C' && cursorAt < sb.length()) { // Right
-                    writeAndFlush("\033[C");
+                    print("\033[C");
                     cursorAt++;
                 } else if (c == 'A' && historyCursorAt > 0) { // Up
                     historyCursorAt--;
                     for (; cursorAt > 0; cursorAt--) write("\b \b");
                     write(inputHistory.get(historyCursorAt));
-                    out.flush();
+                    flush();
                     sb.setLength(0);
                     sb.append(inputHistory.get(historyCursorAt));
                     cursorAt = sb.length();
@@ -185,18 +195,18 @@ public class SatelliteShell implements Command, Runnable {
                     historyCursorAt++;
                     for (; cursorAt > 0; cursorAt--) write("\b \b");
                     write(inputHistory.get(historyCursorAt));
-                    out.flush();
+                    flush();
                     sb.setLength(0);
                     sb.append(inputHistory.get(historyCursorAt));
                     cursorAt = sb.length();
                 }
                 enteringSeq = false;
             } else if (c == '\r' || c == '\n') {
-                writeAndFlush("\r\n");
+                print("\r\n");
                 break;
             } else if (c == '\003') { // Ctrl+C
                 sb.setLength(0);
-                writeAndFlush("^C\n");
+                print("^C\n");
                 return null; // Exit
             } else if (c == '\033') { // Esc
                 enteredEsc = true;
@@ -207,14 +217,14 @@ public class SatelliteShell implements Command, Runnable {
                     write("\b \b");
                     // Refresh
                     for (int i = cursorAt; i < sb.length(); i++) {
-                        if (masked) out.write('*');
-                        else out.write(sb.charAt(i));
+                        if (masked) write('*');
+                        else write(sb.charAt(i));
                     }
                     write("\033[K");
                     for (int i = sb.length() - 1; i >= cursorAt; i--) {
                         write("\b");
                     }
-                    out.flush();
+                    flush();
                 }
             } else if (c == '\t') {
                 continue;
@@ -222,13 +232,13 @@ public class SatelliteShell implements Command, Runnable {
                 sb.insert(cursorAt, (char) c);
                 // Refresh
                 for (int i = cursorAt; i < sb.length(); i++) {
-                    if (masked) out.write('*');
-                    else out.write(sb.charAt(i));
+                    if (masked) write('*');
+                    else write(sb.charAt(i));
                 }
                 for (int i = sb.length() - 1; i > cursorAt; i--) {
-                    out.write('\b');
+                    write('\b');
                 }
-                out.flush();
+                flush();
                 cursorAt++;
             }
         }

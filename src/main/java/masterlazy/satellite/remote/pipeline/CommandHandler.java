@@ -17,6 +17,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -154,22 +157,27 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         CommandC2SPayload payload = request.payload();
         if (payload.command() != CommandEnum.LIST) return false;
         String[] args = payload.args();
-        if (args.length < 1) {
+        if (args.length < 2) {
             return respond(request, Status.BAD_REQUEST, null);
         }
         Path path = verifyPath(args[0], request);
-        if (path == null || !Files.isDirectory(path)) {
+        String options = args[1];
+        if (path == null || options == null) {
+            return respond(request, Status.BAD_REQUEST, null);
+        }
+        boolean detailed = options.contains("l");
+        if (!Files.isDirectory(path)) {
             return respond(request, Status.NOT_FOUND, null);
         }
         try (var stream = Files.list(path)) {
             List<Path> allChildren = stream.toList();
             List<String> subDirs = allChildren.stream()
                     .filter(Files::isDirectory)
-                    .map(p -> p.getFileName().toString())
+                    .map(p -> pathToString(p, detailed))
                     .toList();
             List<String> subFiles = allChildren.stream()
                     .filter(Files::isRegularFile)
-                    .map(p -> p.getFileName().toString())
+                    .map(p -> pathToString(p, detailed))
                     .toList();
             List<String> paths = new ArrayList<>();
             paths.add(((Integer) subDirs.size()).toString());
@@ -179,6 +187,28 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         } catch (IOException e) {
             return respond(request, Status.INTERNAL_SERVER_ERROR, null);
         }
+    }
+
+    private String pathToString(Path p, boolean detailed) {
+        final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        if (!detailed) return p.getFileName().toString();
+        String latestModified, fileSize;
+        try {
+            LocalDateTime dateTime = LocalDateTime.ofInstant(Files.getLastModifiedTime(p).toInstant(), ZoneId.systemDefault());
+            latestModified = dateTime.format(FORMATTER);
+        } catch (IOException e) {
+            latestModified = "Error";
+        }
+        if (Files.isDirectory(p)) {
+            fileSize = "(DIR)";
+        } else {
+            try {
+                fileSize = RemoteUtils.bytesToString(Files.size(p));
+            } catch (IOException e) {
+                fileSize = "Error";
+            }
+        }
+        return String.format("%s  %10s  %s", latestModified, fileSize, p.getFileName());
     }
 
     // Helpers

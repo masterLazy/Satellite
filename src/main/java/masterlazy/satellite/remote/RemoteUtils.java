@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.security.SecureRandom;
+import java.text.DecimalFormat;
 import java.util.Base64;
 
 public class RemoteUtils {
@@ -24,5 +25,20 @@ public class RemoteUtils {
         } catch (IOException e) {
             return false;
         }
+    }
+
+    public static String bytesToString(long bytes) {
+        final String[] UNITS = {"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
+        final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#.##");
+        if (bytes <= 0) {
+            return "0 B";
+        }
+        int unitIndex = 0;
+        double size = bytes;
+        while (size >= 1024 && unitIndex < UNITS.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+        return DECIMAL_FORMAT.format(size) + " " + UNITS[unitIndex];
     }
 }

@@ -1,5 +1,6 @@
 package masterlazy.satellite.client.remote;
 
+import masterlazy.satellite.client.remote.cli.ShellContext;
 import masterlazy.satellite.client.remote.command.SatelliteCommand;
 import masterlazy.satellite.client.remote.cli.SshServer;
 import masterlazy.satellite.remote.RemoteService;
@@ -63,24 +64,24 @@ public class RemoteClient {
      * @return `null` if response timeout
      */
     @Nullable
-    public CommandS2CPayload sendAndWait(String token, CommandEnum command, @Nullable String[] args) throws InterruptedException, ExecutionException {
+    public CommandS2CPayload sendAndWait(ShellContext ctx, CommandEnum command, @Nullable String[] args) throws InterruptedException, ExecutionException {
         AtomicInteger index = new AtomicInteger(0);
         ScheduledFuture<?> animTask = scheduler.scheduleAtFixedRate(() -> {
-            System.out.print("\r" + spinner[index.getAndIncrement() % spinner.length] + " ");
+            ctx.print("\r" + spinner[index.getAndIncrement() % spinner.length] + " ");
         }, 0, 100, TimeUnit.MILLISECONDS);
         UUID requestId = UUID.randomUUID();
         Future<CommandS2CPayload> future = commandResponseManager.responseFor(requestId);
-        ClientPlayNetworking.send(new CommandC2SPayload(requestId, token, command, args == null ? new String[0] : args));
+        ClientPlayNetworking.send(new CommandC2SPayload(requestId, ctx.token(), command, args == null ? new String[0] : args));
         try {
             return future.get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
             animTask.cancel(true);
-            System.out.println("\r\033[31mResponse timeout after "+COMMAND_TIMEOUT_SECONDS+"s\033[0m");
+            ctx.println("\r\033[31mResponse timeout after "+COMMAND_TIMEOUT_SECONDS+"s\033[0m");
             future.cancel(true);
             return null;
         } finally {
             animTask.cancel(true);
-            System.out.print("\r  \r");
+            ctx.print("\r  \r");
         }
     }
 
