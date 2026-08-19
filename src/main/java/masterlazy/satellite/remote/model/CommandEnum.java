@@ -12,6 +12,8 @@ public enum CommandEnum {
     MOVE,
     COPY,
     REMOVE,
+    MKDIR,
+    TOUCH,
 
     UNKNOWN;
 

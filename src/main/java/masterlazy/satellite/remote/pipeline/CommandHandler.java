@@ -19,6 +19,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -45,7 +47,9 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
                 .add(this::handleConsoleFeed)
                 .add(this::handleExecute)
                 .add(this::handleList)
-                .add(this::handleMoveCopy);
+                .add(this::handleMoveCopy)
+                .add(this::handleRemove)
+                .add(this::handleMkdirTouch);
     }
 
     @Override
@@ -138,9 +142,7 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
                     respond(request, Status.FORBIDDEN, null);
                 }
             }
-            case FETCH_1000 -> {
-                respond(request, Status.OK, new String[]{feedManager.getLast1000Lines()});
-            }
+            case FETCH_1000 -> respond(request, Status.OK, new String[]{feedManager.getLast1000Lines()});
         }
         return true;
     }
@@ -188,7 +190,7 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
             paths.addAll(subFiles);
             return respond(request, Status.OK, paths.toArray(String[]::new));
         } catch (IOException e) {
-            return respond(request, Status.INTERNAL_SERVER_ERROR, null);
+            return respond(request, Status.INTERNAL_SERVER_ERROR, new String[]{e.toString()});
         }
     }
 
@@ -265,6 +267,62 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
                         Files.move(src, dest);
                     }
                 }
+            }
+        } catch (IOException e) {
+            return respond(request, Status.INTERNAL_SERVER_ERROR, new String[]{e.toString()});
+        }
+        return respond(request, Status.OK, null);
+    }
+
+    public boolean handleRemove(Request<CommandC2SPayload> request) {
+        CommandC2SPayload payload = request.payload();
+        if (payload.command() != CommandEnum.REMOVE) return false;
+        String[] args = payload.args();
+        if (args.length < 2) {
+            return respond(request, Status.BAD_REQUEST, null);
+        }
+        Path target = getVerifiedPath(args[0]);
+        boolean recursive = args[1].contains("r");
+        if (target == null || !Files.exists(target)) {
+            return respond(request, Status.NOT_FOUND, null);
+        }
+        try {
+            if (Files.isDirectory(target)) {
+                if (!recursive) {
+                    return respond(request, Status.FORBIDDEN, new String[]{"Target is directory"});
+                }
+                PathUtils.deleteDirectory(target);
+            } else {
+                Files.delete(target);
+            }
+        } catch (IOException e) {
+            return respond(request, Status.INTERNAL_SERVER_ERROR, new String[]{e.toString()});
+        }
+        return respond(request, Status.OK, null);
+    }
+
+    public boolean handleMkdirTouch(Request<CommandC2SPayload> request) {
+        CommandC2SPayload payload = request.payload();
+        if (payload.command() != CommandEnum.MKDIR && payload.command() != CommandEnum.TOUCH) return false;
+        String[] args = payload.args();
+        if (args.length < 1) {
+            return respond(request, Status.BAD_REQUEST, null);
+        }
+        Path target = getVerifiedPath(args[0]);
+        if (target == null) {
+            return respond(request, Status.NOT_FOUND, null);
+        }
+        try {
+            if (payload.command() == CommandEnum.MKDIR) {
+                if (Files.exists(target)) {
+                    return respond(request, Status.FORBIDDEN, null);
+                }
+                Files.createDirectories(target);
+            } else {
+                if (!Files.exists(target)) {
+                    Files.createFile(target);
+                }
+                Files.setLastModifiedTime(target, FileTime.from(Instant.now()));
             }
         } catch (IOException e) {
             return respond(request, Status.INTERNAL_SERVER_ERROR, new String[]{e.toString()});

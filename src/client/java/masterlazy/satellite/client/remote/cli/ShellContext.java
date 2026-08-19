@@ -20,6 +20,11 @@ public interface ShellContext {
     void flush();
 
     /**
+     * Set input suggestions
+     */
+    void setSuggestions(String[] s);
+
+    /**
      * Write character
      */
     default void write(char c) {

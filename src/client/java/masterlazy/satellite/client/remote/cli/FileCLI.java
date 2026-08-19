@@ -56,6 +56,9 @@ public class FileCLI {
                 }
             }
         }
+        if (!detailed) {
+            ctx.setSuggestions(response.paths());
+        }
         ctx.write("\r\n");
         ctx.flush();
     }
@@ -69,11 +72,17 @@ public class FileCLI {
         } else {
             cli.workingDir.clear();
             cli.workingDir.addAll(List.of(sd.substring(1).split("/")));
+            ctx.setSuggestions(response.paths());
         }
     }
 
-    public void mvcp(String src, String dest, boolean isCopy, boolean recursive) throws ExecutionException, InterruptedException  {
-        CommandEnum command = isCopy ? CommandEnum.COPY : CommandEnum.MOVE;
+    public void mv_cp(String src, String dest, CommandEnum command, boolean recursive) throws ExecutionException, InterruptedException  {
+        String action;
+        if (command == CommandEnum.COPY) {
+            action = "copy";
+        } else if (command == CommandEnum.MOVE) {
+            action = "move";
+        } else return;
         String s = resolve(src);
         if (s == null) return;
         String d = resolve(dest);
@@ -88,12 +97,57 @@ public class FileCLI {
         }
         if (response.status() != Status.OK) {
             if (response.results().length < 1) {
-                ctx.println("\033[31mFailed to "+(isCopy?"copy":"move")+": "+response.status().name() + "\033[0m");
+                ctx.println("\033[31mFailed to " + action + ": "+response.status().name() + "\033[0m");
             } else {
-                ctx.println("\033[31mFailed to " + (isCopy ? "copy" : "move") + ": " + response.status().name() + " " + response.results()[0] + "\033[0m");
+                ctx.println("\033[31mFailed to " + action + ": " + response.status().name() + ": " + response.results()[0] + "\033[0m");
             }
         }
-        ctx.println("Done.");
+    }
+
+    public void rm(String target, boolean recursive) throws ExecutionException, InterruptedException {
+        String t = resolve(target);
+        if (t == null) return;
+        CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait(ctx, CommandEnum.REMOVE, new String[]{t, recursive?"r":""});
+        if (response == null) return;
+        if (response.status() == Status.UNAUTHORIZED) {
+            ctx.renewToken();
+            response = SatelliteClient.remoteClient.sendAndWait(ctx, CommandEnum.REMOVE, new String[]{t, recursive?"r":""});
+            if (response == null) return;
+            if (response.status() == Status.UNAUTHORIZED) throw new UnauthorizedException();
+        }
+        if (response.status() != Status.OK) {
+            if (response.results().length < 1) {
+                ctx.println("\033[31mFailed to remove: " + response.status().name() + "\033[0m");
+            } else {
+                ctx.println("\033[31mFailed to remove: " + response.status().name() + ": " + response.results()[0] + "\033[0m");
+            }
+        }
+    }
+
+    public void mkdir_touch(String target, CommandEnum command) throws ExecutionException, InterruptedException {
+        String action;
+        if (command == CommandEnum.MKDIR) {
+            action = "create directory";
+        } else if (command == CommandEnum.TOUCH) {
+            action = "touch";
+        } else return;
+        String t = resolve(target);
+        if (t == null) return;
+        CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait(ctx, command, new String[]{t});
+        if (response == null) return;
+        if (response.status() == Status.UNAUTHORIZED) {
+            ctx.renewToken();
+            response = SatelliteClient.remoteClient.sendAndWait(ctx, command, new String[]{t});
+            if (response == null) return;
+            if (response.status() == Status.UNAUTHORIZED) throw new UnauthorizedException();
+        }
+        if (response.status() != Status.OK) {
+            if (response.results().length < 1) {
+                ctx.println("\033[31mFailed to " + action + ": " + response.status().name() + "\033[0m");
+            } else {
+                ctx.println("\033[31mFailed to " + action + ": " + response.status().name() + ": " + response.results()[0] + "\033[0m");
+            }
+        }
     }
 
     private @Nullable String resolve(String path) {
@@ -105,14 +159,14 @@ public class FileCLI {
             if (s.equals(".")) continue;
             if (s.equals("..")) {
                 if (goal.isEmpty()) {
-                    ctx.println("Path not found");
+                    ctx.println("Failed to resolve path '"+path+"'");
                     return null;
                 }
                 goal.remove(goal.size()-1);
                 continue;
             }
             if (s.isEmpty()) {
-                ctx.println("Path not found");
+                ctx.println("Failed to resolve path '"+path+"'");
                 return null;
             }
             goal.add(s);
@@ -137,7 +191,11 @@ public class FileCLI {
         if (response.status() == Status.NOT_FOUND) {
             return null;
         } else if (response.status() != Status.OK) {
-            ctx.println("\033[31mFailed to list: "+response.status().name()+"\033[0m");
+            if (response.results().length < 1) {
+                ctx.println("\033[31mFailed to list: "+response.status().name() + "\033[0m");
+            } else {
+                ctx.println("\033[31mFailed to list: " + response.status().name() + " " + response.results()[0] + "\033[0m");
+            }
             return null;
         } else if (response.results().length < 1) {
             ctx.println("\033[31mFailed to list: invalid response from server\033[0m");

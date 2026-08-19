@@ -1,6 +1,7 @@
 package masterlazy.satellite.client.remote.cli;
 
 import masterlazy.satellite.client.SatelliteClient;
+import masterlazy.satellite.remote.model.CommandEnum;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
@@ -41,7 +42,7 @@ public class SatelliteCLI {
     }
 
     @SuppressWarnings("unused")
-    @Command(name = "pwd", description = "Print working directory.")
+    @Command(name = "pwd", description = "Display the current directory path.")
     public void pwd() {
         ctx.println(getWorkingDir());
     }
@@ -53,7 +54,7 @@ public class SatelliteCLI {
     }
 
     @SuppressWarnings("unused")
-    @Command(name = "ls", description = "List sub-directories and files in working directory.")
+    @Command(name = "ls", description = "List files and directories.")
     public void ls(
             @CommandLine.Option(names = {"-l", "--long"}, description = "list detailed info") boolean detailed
     ) throws ExecutionException, InterruptedException {
@@ -61,7 +62,7 @@ public class SatelliteCLI {
     }
 
     @SuppressWarnings("unused")
-    @Command(name = "cd", description = "Change working directory.")
+    @Command(name = "cd", description = "Change the current directory.")
     public void cd(
             @CommandLine.Parameters(paramLabel = "<subdirectory>") String subdir
     ) throws ExecutionException, InterruptedException {
@@ -69,21 +70,46 @@ public class SatelliteCLI {
     }
 
     @SuppressWarnings("unused")
-    @Command(name = "mv", description = "Move file or directory, ALWAYS REPLACE EXISTED FILES")
+    @Command(name = "mv", description = "Move files or renames them. \033[33mALWAYS REPLACE EXISTING FILES\033[0m.")
     public void mv(
             @CommandLine.Parameters(paramLabel = "<source>") String src,
             @CommandLine.Parameters(paramLabel = "<destination>") String dest
     ) throws ExecutionException, InterruptedException {
-        fileCLI.mvcp(src, dest, false, false);
+        fileCLI.mv_cp(src, dest, CommandEnum.MOVE, false);
     }
 
     @SuppressWarnings("unused")
-    @Command(name = "cp", description = "Copy file or directory, ALWAYS REPLACE EXISTED FILES")
+    @Command(name = "cp", description = "Copy files from source to destination. \033[33mALWAYS REPLACE EXISTING FILES\033[0m.")
     public void cp(
             @CommandLine.Parameters(paramLabel = "<source>") String src,
             @CommandLine.Parameters(paramLabel = "<destination>") String dest,
             @CommandLine.Option(names = {"-r", "--recursive"}, description = "recursively copy") boolean recursive
     ) throws ExecutionException, InterruptedException {
-        fileCLI.mvcp(src, dest, true, recursive);
+        fileCLI.mv_cp(src, dest, CommandEnum.COPY, recursive);
+    }
+
+    @SuppressWarnings("unused")
+    @Command(name = "rm", description = "Delete a file.")
+    public void rm(
+            @CommandLine.Parameters(paramLabel = "<target>") String target,
+            @CommandLine.Option(names = {"-r", "--recursive"}, description = "recursively copy") boolean recursive
+    ) throws ExecutionException, InterruptedException {
+        fileCLI.rm(target, recursive);
+    }
+
+    @SuppressWarnings("unused")
+    @Command(name = "mkdir", description = "Create a new directory.")
+    public void mkdir(
+            @CommandLine.Parameters(paramLabel = "<target>") String target
+    ) throws ExecutionException, InterruptedException {
+        fileCLI.mkdir_touch(target, CommandEnum.MKDIR);
+    }
+
+    @SuppressWarnings("unused")
+    @Command(name = "touch", description = "Create an empty file or updates the last accessed date.")
+    public void touch(
+            @CommandLine.Parameters(paramLabel = "<target>") String target
+    ) throws ExecutionException, InterruptedException {
+        fileCLI.mkdir_touch(target, CommandEnum.TOUCH);
     }
 }

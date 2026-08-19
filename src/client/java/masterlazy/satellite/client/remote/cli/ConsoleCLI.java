@@ -90,6 +90,12 @@ public class ConsoleCLI {
                             } else if (c == 'C' && cursorAt < sb.length()) { // Right
                                 ctx.print("\033[C");
                                 cursorAt++;
+                            } else if (c == 'H') { // Home
+                                cursorAt = 0;
+                                restoreInput = true;
+                            } else if (c == 'F') { // End
+                                cursorAt = sb.length();
+                                restoreInput = true;
                             }
                             enteringSeq = false;
                         } else if (c == '\r' || c == '\n') {

@@ -47,22 +47,25 @@ public record CommandS2CPayload(
 
 以下是 `command` 取不同值时的逻辑。
 
-| command     | args        | opt          | results           | 部分 status                                       |
-| ----------- | ----------- | ------------ | ----------------- | ------------------------------------------------- |
-| AUTHORIZE   | `password`  |              | `token/null`      | `UNAUTHORIZED` 密码错误<br />`FORBIDDEN` 权限不足 |
-| SUBSCRIBE   | `null`      |              | `null`            |                                                   |
-| UNSUBSCRIBE | `null`      |              | `null`            |                                                   |
-| FETCH_1000  | `null`      |              | `content`         |                                                   |
-| EXECUTE     | `command`   |              | `null`            |                                                   |
-| LIST        | `path, opt` | `l` 详细信息 | `dirCount, paths` | `NOT_FOUND` 目录不存在                            |
-| MOVE        | `src, dest` |              | `null/msg`        | `NOT_FOUND` 源不存在                              |
-| COPY        | `src, dest` | `r` 递归复制 | `null/msg`        | `NOT_FOUND` 源不存在                              |
-| REMOVE      | `path`      | `r` 递归删除 | `null`            |                                                   |
+| command     | args        | opt          | results                 | 部分 status                                       |
+| ----------- | ----------- | ------------ | ----------------------- | ------------------------------------------------- |
+| AUTHORIZE   | `password`  |              | `token/null`            | `UNAUTHORIZED` 密码错误<br />`FORBIDDEN` 权限不足 |
+| SUBSCRIBE   | `null`      |              | `null`                  |                                                   |
+| UNSUBSCRIBE | `null`      |              | `null`                  |                                                   |
+| FETCH_1000  | `null`      |              | `content`               |                                                   |
+| EXECUTE     | `command`   |              | `null`                  |                                                   |
+| LIST        | `path, opt` | `l` 详细信息 | `(dirCount, paths)/msg` | `NOT_FOUND` 目录不存在                            |
+| MOVE        | `src, dest` |              | `null/msg`              | `NOT_FOUND` 源不存在                              |
+| COPY        | `src, dest` | `r` 递归复制 | `null/msg`              | `NOT_FOUND` 源不存在                              |
+| REMOVE      | `target`    | `r` 递归删除 | `null/msg`              | `NOT_FOUND` 目标不存在                            |
+| MKDIR       | `target`    |              | `null`                  | `FORBIDDEN` 已存在同名目录或文件                  |
+| TOUCH       | `target`    |              | `null`                  |                                                   |
 
 - AUTHORIZE：单人模式不鉴权，直接发放令牌
 - FETCH_1000：每行最多1024个字符
 - LIST：先返回所有目录，再返回文件
-- MOVE/COPY：**始终覆盖目标目录中的文件**；可能会通过 results 返回错误信息
+- MOVE/COPY：**始终覆盖目标目录中的文件**
+- LIST/MOVE/COPY/REMOVE/MKDIR/TOUCH：可能会通过 results 返回错误信息
 
 
 

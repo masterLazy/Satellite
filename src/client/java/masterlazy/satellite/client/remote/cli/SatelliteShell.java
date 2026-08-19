@@ -27,6 +27,7 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
 
     private BufferedReader reader;
     private final List<String> inputHistory = new ArrayList<>();
+    private final List<String> inputSuggestions = new ArrayList<>();
 
     @Override
     public void setInputStream(InputStream in) {
@@ -99,14 +100,18 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
                 try {
                     cmd.execute(args);
                 } catch (Exception e) {
-                    err.write(("\033[31mError: " + e.getMessage() + "\033[0m\r\n").getBytes(StandardCharsets.UTF_8));
+                    err.write(("\033[31mError: " + e + "\033[0m\r\n").getBytes(StandardCharsets.UTF_8));
                     err.flush();
                 }
             }
-        } catch (Exception ignored) {
-        } finally {
-            callback.onExit(0);
+        } catch (Exception e) {
+            try {
+                err.write(("\033[31mError: " + e + "\033[0m\r\n").getBytes(StandardCharsets.UTF_8));
+                err.flush();
+            } catch (IOException ignored) {}
+            callback.onExit(-1);
         }
+        callback.onExit(0);
     }
 
     @Nullable public String token() { return myToken; }
@@ -165,6 +170,13 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
         } catch (IOException ignored) {}
     }
 
+
+    public void setSuggestions(String[] s) {
+        inputSuggestions.clear();
+        inputSuggestions.addAll(List.of(s));
+    }
+
+
     @Nullable
     public String readLineWithEcho(boolean masked) throws IOException {
         StringBuilder sb = new StringBuilder();
@@ -172,6 +184,9 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
         boolean enteredEsc = false, enteringSeq = false;
         int cursorAt = 0;
         int historyCursorAt = inputHistory.size();
+        // Suggestion service
+        List<String> interestedSuggestions = new ArrayList<>();
+        int interestedCursorAt = -1;
         while ((c = reader.read()) != -1) {
             if (enteredEsc) {
                 if (c == '[') enteringSeq = true;
@@ -187,18 +202,24 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
                     historyCursorAt--;
                     for (; cursorAt > 0; cursorAt--) write("\b \b");
                     write(inputHistory.get(historyCursorAt));
-                    flush();
                     sb.setLength(0);
                     sb.append(inputHistory.get(historyCursorAt));
                     cursorAt = sb.length();
+                    flush();
                 } else if (c == 'B' && historyCursorAt + 1 < inputHistory.size()) { // Down
                     historyCursorAt++;
                     for (; cursorAt > 0; cursorAt--) write("\b \b");
                     write(inputHistory.get(historyCursorAt));
-                    flush();
                     sb.setLength(0);
                     sb.append(inputHistory.get(historyCursorAt));
                     cursorAt = sb.length();
+                    flush();
+                } else if (c == 'H') { // Home
+                    for (; cursorAt > 0; cursorAt--) write("\b");
+                    flush();
+                } else if (c == 'F') { // End
+                    for (; cursorAt < sb.length(); cursorAt++) write("\033[C");
+                    flush();
                 }
                 enteringSeq = false;
             } else if (c == '\r' || c == '\n') {
@@ -227,7 +248,26 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
                     flush();
                 }
             } else if (c == '\t') {
-                continue;
+                if (inputSuggestions.isEmpty()) continue;
+                if (interestedSuggestions.isEmpty()) {
+                    String p = getLastPart(sb);
+                    interestedSuggestions.addAll(inputSuggestions.stream()
+                            .filter(s -> s.startsWith(p))
+                            .toList());
+                    interestedCursorAt = 0;
+                } else {
+                    interestedCursorAt = (interestedCursorAt + 1) % interestedSuggestions.size();
+                }
+                if (!interestedSuggestions.isEmpty()) {
+                    String p = getLastPart(sb);
+                    for (; cursorAt < sb.length(); cursorAt++) write("\033[C"); // Move to tail
+                    for (int i = 0; i < p.length(); i++) write("\b \b"); // Erase last part
+                    write(interestedSuggestions.get(interestedCursorAt));
+                    sb.setLength(sb.length() - p.length());
+                    sb.append(interestedSuggestions.get(interestedCursorAt));
+                    cursorAt = sb.length();
+                    flush();
+                }
             } else {
                 sb.insert(cursorAt, (char) c);
                 // Refresh
@@ -241,11 +281,22 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
                 flush();
                 cursorAt++;
             }
+            if (c != '\t' && !interestedSuggestions.isEmpty()) {
+                interestedSuggestions.clear();
+            }
         }
         if (c == -1 && sb.isEmpty()) {
             return null;
         }
-        inputHistory.add(sb.toString());
+        if (!masked) {
+            inputHistory.add(sb.toString());
+        }
         return sb.toString();
+    }
+
+    private String getLastPart(StringBuilder sb) {
+        String s = sb.toString();
+        int idx = s.lastIndexOf(' ');
+        return idx == -1 ? s : s.substring(idx + 1);
     }
 }
