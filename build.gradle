@@ -1,6 +1,7 @@
 plugins {
 	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
 	id 'maven-publish'
+	id 'com.gradleup.shadow' version '8.3.7'
 }
 
 version = project.mod_version
@@ -39,6 +40,9 @@ dependencies {
 	include(modImplementation "org.apache.sshd:sshd-common:2.15.0")
 	include(modImplementation "info.picocli:picocli:4.7.7")
 	include(modImplementation "commons-io:commons-io:2.20.0")
+
+	// Migration helper
+	shadow 'com.google.code.gson:gson:2.14.0'
 }
 
 processResources {
@@ -72,6 +76,16 @@ jar {
 		rename { "${it}_$projectName"}
 	}
 }
+
+shadowJar {
+	manifest {
+		attributes 'Main-Class': 'masterlazy.satellite.migrate.CLIMain'
+	}
+	archiveClassifier = 'migration-helper'
+	configurations = [project.configurations.shadow]
+}
+
+build.dependsOn shadowJar
 
 // configure the maven publication
 publishing {
