@@ -1,6 +1,7 @@
 package masterlazy.satellite.client.remote;
 
 import masterlazy.satellite.client.SatelliteClient;
+import masterlazy.satellite.client.remote.cli.ConsoleCLI;
 import masterlazy.satellite.client.remote.cli.ShellContext;
 import masterlazy.satellite.client.remote.cli.SshServer;
 import masterlazy.satellite.client.remote.command.SatelliteCommand;
@@ -61,6 +62,7 @@ public class RemoteClient {
     private void shutdown() {
         sshServer.close();
         remoteAvailable = false;
+        ConsoleCLI.isRunning = false;
     }
 
     private void handleHelloS2C(HelloS2CPayload payload, Context context) {

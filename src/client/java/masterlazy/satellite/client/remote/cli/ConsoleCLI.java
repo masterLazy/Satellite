@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutionException;
 public class ConsoleCLI {
     private final SatelliteCLI cli;
     private final ShellContext ctx;
-    private static boolean isRunning = false;
+    public static boolean isRunning = false;
 
     public ConsoleCLI(SatelliteCLI cli, ShellContext ctx) {
         this.cli = cli;
