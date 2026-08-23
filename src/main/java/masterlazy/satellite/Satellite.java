@@ -54,15 +54,17 @@ public class Satellite implements ModInitializer {
             LOGGER.error("[Satellite] Failed to crate base directory {}", BASE_DIR, e);
         }
         // Services
-        authService.onInitialize();
-        guardService.onInitialize();
+        if (isMultiPlayer()) {
+            authService.onInitialize();
+            guardService.onInitialize();
+        }
         remoteService.onInitialize();
     }
 
     // Server
 
-    public static boolean isSingleGame() {
-        return !(Server instanceof DedicatedServer);
+    public static boolean isMultiPlayer() {
+        return Server instanceof DedicatedServer;
     }
 
     public static void execute(String command) {
