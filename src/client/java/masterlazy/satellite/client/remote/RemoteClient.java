@@ -1,5 +1,6 @@
 package masterlazy.satellite.client.remote;
 
+import masterlazy.satellite.client.SatelliteClient;
 import masterlazy.satellite.client.remote.cli.ShellContext;
 import masterlazy.satellite.client.remote.cli.SshServer;
 import masterlazy.satellite.client.remote.command.SatelliteCommand;
@@ -28,7 +29,8 @@ public class RemoteClient {
     public final int FEED_TIMEOUT_MILLISECONDS = 10;
 
     private final char[] spinner = {'/', '-', '\\', '|'};
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ScheduledExecutorService animationScheduler = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService exitScheduler = Executors.newSingleThreadScheduledExecutor();
 
     public boolean isRemoteAvailable() { return remoteAvailable; }
 
@@ -36,16 +38,29 @@ public class RemoteClient {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->{
             SatelliteCommand.register(dispatcher, this, sshServer);
         });
-        ClientPlayConnectionEvents.DISCONNECT.register((listener, client)->{
-            sshServer.close();
-        });
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
-            sshServer.close();
-        });
         // Payloads
         ClientPlayNetworking.registerGlobalReceiver(HelloS2CPayload.ID, this::handleHelloS2C);
         ClientPlayNetworking.registerGlobalReceiver(CommandS2CPayload.ID, commandResponseManager::handle);
         ClientPlayNetworking.registerGlobalReceiver(ConsoleFeedS2CPayload.ID, this::handleConsoleFeedS2C);
+        // TODO: I don't know why these two work well in dev client but don't work in formal client
+        ClientPlayConnectionEvents.DISCONNECT.register((listener, client)->{
+            shutdown();
+        });
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            shutdown();
+        });
+        // So I added this to make sure ssh server is closed when leaving game
+        exitScheduler.scheduleAtFixedRate(
+                () -> { if (!SatelliteClient.isInGame()) shutdown(); },
+                0,
+                100,
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    private void shutdown() {
+        sshServer.close();
+        remoteAvailable = false;
     }
 
     private void handleHelloS2C(HelloS2CPayload payload, Context context) {
@@ -66,7 +81,7 @@ public class RemoteClient {
     @Nullable
     public CommandS2CPayload sendAndWait(ShellContext ctx, CommandEnum command, @Nullable String[] args) throws InterruptedException, ExecutionException {
         AtomicInteger index = new AtomicInteger(0);
-        ScheduledFuture<?> animTask = scheduler.scheduleAtFixedRate(() -> {
+        ScheduledFuture<?> animTask = animationScheduler.scheduleAtFixedRate(() -> {
             ctx.print("\r" + spinner[index.getAndIncrement() % spinner.length] + " ");
         }, 0, 100, TimeUnit.MILLISECONDS);
         UUID requestId = UUID.randomUUID();

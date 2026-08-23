@@ -26,4 +26,9 @@ public class SatelliteClient implements ClientModInitializer {
 		Minecraft client = Minecraft.getInstance();
         return client.getUser().getName();
 	}
+
+	public static boolean isInGame() {
+		Minecraft client = Minecraft.getInstance();
+		return client.player != null && client.level != null;
+	}
 }
