@@ -2,6 +2,7 @@ package masterlazy.satellite.remote.payload;
 
 import io.netty.buffer.ByteBuf;
 import masterlazy.satellite.remote.model.CommandEnum;
+import masterlazy.satellite.remote.model.FilePayloadType;
 import masterlazy.satellite.remote.model.Status;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -36,6 +37,14 @@ public class Codecs {
     }, buf -> {
         String s = ByteBufCodecs.STRING_UTF8.decode(buf);
         return Status.from(s);
+    });
+
+    // FileCommand
+    public static final StreamCodec<ByteBuf, FilePayloadType> FILE_COMMAND = StreamCodec.of((buf, load) -> {
+        ByteBufCodecs.STRING_UTF8.encode(buf, load.name());
+    }, buf -> {
+        String s = ByteBufCodecs.STRING_UTF8.decode(buf);
+        return FilePayloadType.from(s);
     });
 
     // String[]

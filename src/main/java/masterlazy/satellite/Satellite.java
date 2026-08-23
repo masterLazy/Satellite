@@ -47,24 +47,21 @@ public class Satellite implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> Server = server);
         try {
             Files.createDirectories(Path.of(BASE_DIR));
         } catch (IOException e) {
-            LOGGER.error("[Satellite] Failed to crate base directory {}", BASE_DIR, e);
+            LOGGER.error("[Satellite] Failed to create base directory {}", BASE_DIR, e);
         }
-        // Services
-        if (isMultiPlayer()) {
-            authService.onInitialize();
-            guardService.onInitialize();
-        }
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> Server = server);
+        authService.onInitialize();
+        guardService.onInitialize();
         remoteService.onInitialize();
     }
 
     // Server
 
-    public static boolean isMultiPlayer() {
-        return Server instanceof DedicatedServer;
+    public static boolean isSingleGame() {
+        return !(Server instanceof DedicatedServer);
     }
 
     public static void execute(String command) {

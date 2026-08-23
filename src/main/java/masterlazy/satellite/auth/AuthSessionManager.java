@@ -5,9 +5,6 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.level.ServerPlayer;
 
 public class AuthSessionManager extends SessionManager<AuthSession> {
-    @Override
-    protected String getClassName() { return AuthSessionManager.class.getName(); }
-
     public void onInitialize() {
         ServerPlayConnectionEvents.INIT.register((listener, server) -> onPlayerInit(listener.getPlayer()));
         ServerPlayConnectionEvents.DISCONNECT.register((listener, server) -> onServerPlayerDisconnect(listener.getPlayer()));

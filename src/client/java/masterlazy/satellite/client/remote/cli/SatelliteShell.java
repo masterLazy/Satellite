@@ -76,7 +76,7 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
             cmd.setOut(new PrintWriter(out, true));
             cmd.setErr(new PrintWriter(err, true));
 
-            print("\033[2J\033[H"); // Clear screen
+            print("\033[H");
             String welcome = """
                     Welcome to \r
                       \033[36m███████╗ █████╗ ████████╗███████╗██╗     ██╗     ██╗████████╗███████╗\033[0m     ██████╗██╗     ██╗\r
@@ -159,8 +159,7 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
                     break;
                 }
             }
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) { }
         myToken = null;
     }
 
@@ -294,7 +293,7 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
         if (c == -1 && sb.isEmpty()) {
             return null;
         }
-        if (!masked) {
+        if (!masked && !sb.isEmpty()) {
             inputHistory.add(sb.toString());
         }
         return sb.toString();

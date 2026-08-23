@@ -9,7 +9,7 @@ public class RemoteSession {
     private final String token;
     private final String owner;
 
-    private final RateLimit requestLimit = new RateLimit(1200, Duration.ofSeconds(60));
+    private final RateLimit rateLimit = new RateLimit(1200, Duration.ofSeconds(60));
     private static final Duration TIMEOUT_INACTIVITY = Duration.ofMinutes(30);
 
     private Instant expireAt;
@@ -37,10 +37,15 @@ public class RemoteSession {
     }
 
     public boolean tryRequest() {
-        if (requestLimit.tryAcquire()) {
+        if (rateLimit.tryAcquire()) {
             refresh();
             return true;
         }
         return false;
     }
+
+    public int getTryAfterSecond() {
+        return rateLimit.getTryAfterSeconds();
+    }
+
 }

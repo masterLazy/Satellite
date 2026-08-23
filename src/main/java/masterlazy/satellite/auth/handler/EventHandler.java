@@ -39,6 +39,7 @@ public class EventHandler {
     }
 
     private void onPlayerJoin(ServerPlayer player) {
+        if (Satellite.isSingleGame()) return;
         AuthSession session = service.getSession(player);
         if (session == null) return;
 
@@ -57,6 +58,7 @@ public class EventHandler {
     }
 
     private boolean onAllowChatMessage(ServerPlayer player) {
+        if (Satellite.isSingleGame()) return true;
         AuthSession session = service.getSession(player);
         if (session == null) return false;
         if (session.isLoggedIn()) return true;
@@ -66,6 +68,7 @@ public class EventHandler {
     }
 
     private boolean onAllowExecuteCommand(ServerPlayer player, String command) {
+        if (Satellite.isSingleGame()) return true;
         AuthSession session = service.getSession(player);
         if (session == null) return false;
         if (session.isLoggedIn()) return true;

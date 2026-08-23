@@ -1,16 +1,31 @@
 package masterlazy.satellite.client.remote.cli;
 
 import masterlazy.satellite.client.SatelliteClient;
+import masterlazy.satellite.client.remote.RemoteClient;
 import masterlazy.satellite.client.remote.UnauthorizedException;
 import masterlazy.satellite.remote.model.CommandEnum;
+import masterlazy.satellite.remote.model.FilePayloadType;
 import masterlazy.satellite.remote.model.Status;
 import masterlazy.satellite.remote.payload.CommandS2CPayload;
+import masterlazy.satellite.remote.payload.FileC2SPayload;
+import masterlazy.satellite.remote.payload.FileS2CPayload;
+import masterlazy.satellite.remote.pipeline.FileHandler;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.file.*;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+import static masterlazy.satellite.remote.RemoteUtils.bytesToString;
 
 public class FileCLI {
     private final SatelliteCLI cli;
@@ -135,6 +150,113 @@ public class FileCLI {
         }
         if (response.status() != Status.OK) {
             ctx.reportFailure(action, response);
+        }
+    }
+
+    public void get(String target, String savePathStr, boolean override) throws ExecutionException, InterruptedException, IOException {
+        String t = resolve(target);
+        if (t == null) return;
+        String[] ts = t.split("/");
+        String filename = ts[ts.length - 1];
+        Path savePath = Paths.get(savePathStr);
+        Path saveFile, tmpFile;
+        if (Files.exists(savePath)) {
+            if (Files.isDirectory(savePath)) {
+                saveFile = Paths.get(savePathStr, filename);
+            } else {
+                saveFile = savePath;
+            }
+        } else {
+            Files.createDirectories(savePath);
+            saveFile = Paths.get(savePathStr, filename);
+        }
+        tmpFile = Paths.get(saveFile.getParent().toString(), saveFile.getFileName().toString()+".tmp");
+        if (Files.exists(saveFile) && !override) {
+            ctx.println("Cannot save to '"+saveFile+"': already exists");
+            return;
+        }
+        if (Files.exists(tmpFile)) {
+            ctx.println("Cannot save to '"+tmpFile+"': already exists. Another instance may be downloading; if not, please remove it first.");
+            return;
+        }
+        try {
+            Files.createFile(tmpFile);
+            // Send command
+            CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait(ctx, CommandEnum.GET, new String[]{t});
+            if (response == null) return;
+            if (response.status() == Status.UNAUTHORIZED) {
+                ctx.renewToken();
+                response = SatelliteClient.remoteClient.sendAndWait(ctx, CommandEnum.GET, new String[]{t});
+                if (response == null) return;
+                if (response.status() == Status.UNAUTHORIZED) throw new UnauthorizedException();
+            }
+            if (response.status() != Status.OK) {
+                ctx.reportFailure("get", response);
+                return;
+            }
+            UUID sessionId;
+            long fileSize;
+            try {
+                sessionId = UUID.fromString(response.results()[0]);
+                fileSize = Long.parseLong(response.results()[1]);
+            } catch (Exception e) {
+                ctx.println("Server sent invalid response: "+e);
+                return;
+            }
+            // Start session
+            int part = 1, receivedCount;
+            byte[][] parts = new byte[FileHandler.BATCH_SIZE][];
+            BlockingQueue<FileS2CPayload> queue = SatelliteClient.remoteClient.getFileQueueFor(sessionId);
+            boolean eof = false;
+            Instant beginning = Instant.now();
+            long downloaded = 0;
+            double seconds;
+            while (!Thread.currentThread().isInterrupted() && !eof) { // TODO: 添加重试逻辑
+                ClientPlayNetworking.send(new FileC2SPayload(ctx.token(), sessionId, FilePayloadType.FETCH, part, new byte[0]));
+                seconds = Duration.between(beginning, Instant.now()).toMillis() / 1000.0;
+                if (seconds > 0.01) {
+                    ctx.print(String.format("\rDownloaded %10s of %10s, \033[36m%10s/s\033[0m", bytesToString(downloaded), bytesToString(fileSize),
+                            bytesToString(Math.round(downloaded / seconds))));
+                } else {
+                    ctx.print(String.format("\rDownloaded %10s of %10s", bytesToString(downloaded), bytesToString(fileSize)));
+                }
+                receivedCount = 0;
+                for (int i = 0; i < FileHandler.BATCH_SIZE; i++) {
+                    FileS2CPayload received = queue.poll(RemoteClient.FILE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                    if (received != null) {
+                        if (received.payloadType() == FilePayloadType.INTERRUPT) {
+                            throw new RuntimeException("Server interrupted session");
+                        }
+                        int rPart = received.arg();
+                        if (rPart < 0) {
+                            eof = true;
+                            rPart = -rPart;
+                        }
+                        if (rPart - part >= FileHandler.BATCH_SIZE) {
+                            throw new RuntimeException("Server sent invalid part number");
+                        }
+                        parts[rPart - part] = received.data();
+                        receivedCount++;
+                        if (eof) break;
+                    }
+                }
+                if (!eof && receivedCount < FileHandler.BATCH_SIZE) {
+                    throw new RuntimeException("Timeout");
+                }
+                for (int i = 0; i < receivedCount; i++) {
+                    Files.write(tmpFile, parts[i], StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                }
+                part += FileHandler.BATCH_SIZE;
+                downloaded += FileHandler.BATCH_SIZE*FileHandler.PART_BYTES;
+            }
+            Files.move(tmpFile, saveFile, StandardCopyOption.REPLACE_EXISTING);
+            ctx.println("\r\nDownloaded '" + t + "' to '" + saveFile + "'");
+        } catch (RuntimeException e) {
+            ctx.println("\r\n\033[31mFailed to download: "+e+"\033[0m");
+        } finally {
+            if (Files.exists(tmpFile)) {
+                Files.delete(tmpFile);
+            }
         }
     }
 

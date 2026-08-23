@@ -4,6 +4,7 @@ import masterlazy.satellite.Satellite;
 import masterlazy.satellite.auth.AuthService;
 import masterlazy.satellite.auth.AuthSession;
 import masterlazy.satellite.remote.FeedManager;
+import masterlazy.satellite.remote.FileSession;
 import masterlazy.satellite.remote.RemoteService;
 import masterlazy.satellite.remote.RemoteUtils;
 import masterlazy.satellite.remote.model.CommandEnum;
@@ -49,11 +50,12 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
                 .add(this::handleList)
                 .add(this::handleMoveCopy)
                 .add(this::handleRemove)
-                .add(this::handleMkdirTouch);
+                .add(this::handleMkdirTouch)
+                .add(this::handleGetPut);
     }
 
     @Override
-    public boolean handle(Request<CommandC2SPayload> request) {
+    public void handle(Request<CommandC2SPayload> request) {
         if (request.payload().command() == CommandEnum.AUTHORIZE) {
             CommandC2SPayload payload = new CommandC2SPayload(request.payload().requestId(), request.payload().token(),
                     request.payload().command(), new String[]{"password-protected"});
@@ -61,10 +63,10 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         } else {
             Satellite.B_LOGGER.debug("%s >> CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(request.payload()));
         }
-        return pipeline.handle(request);
+        pipeline.handle(request);
     }
 
-    private static boolean respond(Request<CommandC2SPayload> request, Status status, @Nullable String[] results) {
+    private static boolean respond(Request<CommandC2SPayload> request, Status status, String @Nullable [] results) {
         CommandS2CPayload feedback = new CommandS2CPayload(request.payload().requestId(), status, results == null ? new String[0] : results);
         request.respond(feedback);
         Satellite.B_LOGGER.debug("%s << CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(feedback));
@@ -91,9 +93,10 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
 
     private boolean handleSingleGame(Request<CommandC2SPayload> request) {
         CommandC2SPayload payload = request.payload();
-        if (Satellite.isMultiPlayer()) return false;
+        if (!Satellite.isSingleGame()) return false;
         if (payload.command() == CommandEnum.AUTHORIZE) {
             String token = service.getTokenFor(request.sender());
+            if (token == null) return respond(request, Status.INTERNAL_SERVER_ERROR, null);
             return respond(request, Status.OK, new String[]{token});
         }
         return false;
@@ -107,6 +110,7 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
             return respond(request, Status.FORBIDDEN, null);
         }
         if (!session.rateLimit.tryAcquire()) {
+            Satellite.LOGGER.warn("[Satellite] {} reached authorization rate limit.", request.sender());
             return respond(request, Status.TOO_MANY_REQUEST, new String[]{String.format("Try after %ds", session.rateLimit.getTryAfterSeconds())});
         }
         String[] args = payload.args();
@@ -118,9 +122,7 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         }
         session.rateLimit.revertRate();
         String token = service.getTokenFor(request.sender());
-        if (token == null) {
-            return respond(request, Status.INTERNAL_SERVER_ERROR, null);
-        }
+        if (token == null) return respond(request, Status.INTERNAL_SERVER_ERROR, null);
         respond(request, Status.OK, new String[]{token});
         return true;
     }
@@ -335,6 +337,47 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
             return respond(request, Status.INTERNAL_SERVER_ERROR, new String[]{e.toString()});
         }
         return respond(request, Status.OK, null);
+    }
+
+    public boolean handleGetPut(Request<CommandC2SPayload> request) {
+        CommandC2SPayload payload = request.payload();
+        if (payload.command() != CommandEnum.GET && payload.command() != CommandEnum.PUT) return false;
+        String[] args = payload.args();
+        if (args.length < 1) {
+            return respond(request, Status.BAD_REQUEST, null);
+        }
+        Path target = getVerifiedPath(args[0]);
+        if (target == null) {
+            return respond(request, Status.NOT_FOUND, null);
+        }
+        if (payload.command() == CommandEnum.GET) {
+            if (!Files.exists(target)) {
+                return respond(request, Status.NOT_FOUND, null);
+            }
+            if (Files.isDirectory(target)) {
+                return respond(request, Status.FORBIDDEN, null);
+            }
+            FileSession session = new FileSession(target, payload.token(), request.sender());
+            service.putFileSession(session);
+            long size;
+            try {
+                size = Files.size(target);
+            } catch (IOException e) {
+                return respond(request, Status.INTERNAL_SERVER_ERROR, null);
+            }
+            return respond(request, Status.OK, new String[]{session.getId().toString(), String.valueOf(size)});
+        } else { // PUT
+            if (args.length < 2) {
+                return respond(request, Status.BAD_REQUEST, null);
+            }
+            boolean force = args[1].contains("f");
+            if (Files.exists(target) && !force) {
+                return respond(request, Status.FORBIDDEN, null);
+            }
+            FileSession session = new FileSession(target, payload.token(), request.sender());
+            service.putFileSession(session);
+            return respond(request, Status.OK, new String[]{session.getId().toString()});
+        }
     }
 
     // Helpers

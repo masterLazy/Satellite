@@ -5,6 +5,7 @@ import masterlazy.satellite.remote.model.CommandEnum;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -111,5 +112,15 @@ public class SatelliteCLI {
             @CommandLine.Parameters(paramLabel = "<target>") String target
     ) throws ExecutionException, InterruptedException {
         fileCLI.mkdir_touch(target, CommandEnum.TOUCH);
+    }
+
+    @SuppressWarnings("unused")
+    @Command(name = "get", description = "Download file from server.")
+    public void get(
+            @CommandLine.Parameters(paramLabel = "<target>") String target,
+            @CommandLine.Option(names = {"-o", "--out"}, defaultValue = ".satellite/download", description = "path to save") String savePath,
+            @CommandLine.Option(names = {"-f", "--force"}, description = "override local file if exists") boolean override
+    ) throws ExecutionException, InterruptedException, IOException {
+        fileCLI.get(target, savePath, override);
     }
 }

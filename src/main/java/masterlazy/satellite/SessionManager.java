@@ -2,22 +2,22 @@ package masterlazy.satellite;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class SessionManager <S extends HasUuid> extends WithReadWriteLock {
-    protected HashMap<UUID, S> sessionMap = new HashMap<>();
+public abstract class SessionManager <S extends HasUuid> {
+    protected Map<UUID, S> sessionMap = new ConcurrentHashMap<>();
 
-    @Nullable
-    public S get(UUID uuid) {
-        return withReadLock(() -> sessionMap.get(uuid)).orElse(null);
+    public @Nullable S get(UUID uuid) {
+        return sessionMap.get(uuid);
     }
 
     public void register(S session) {
-        withWriteLock(() -> sessionMap.put(session.getUUID(), session));
+        sessionMap.put(session.getUUID(), session);
     }
 
     public void expire(S session) {
-        withWriteLock(() -> sessionMap.remove(session.getUUID()));
+        sessionMap.remove(session.getUUID());
     }
 }

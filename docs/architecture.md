@@ -42,8 +42,6 @@ graph LR
 
 只负责注册命令、传递命令调用给 handler。
 
-
-
 ### Service 业务层
 
 `CommandHandler` 和 `EventHandler` 虽然名字上叫 handler，但和 `...Service` 构成业务层的主要部分。拆成这样是有两个原因：一是塞到一个类里太臃肿，二是这样拆分职责直观。
@@ -59,8 +57,6 @@ graph LR
   
   - 负责操作 repository
   
-
-
 
 ### Infrastructure 基础设施
 

@@ -10,9 +10,6 @@ import java.time.Duration;
 import java.time.Instant;
 
 public class CommandSessionManager extends SessionManager<CommandSession> {
-    @Override
-    protected String getClassName() { return CommandSessionManager.class.getName(); }
-
     private Instant nextCheck = Instant.now();
     private static final Duration CHECK_BETWEEN = Duration.ofSeconds(1);
 
@@ -35,15 +32,12 @@ public class CommandSessionManager extends SessionManager<CommandSession> {
         });
     }
 
-    @Nullable
-    public CommandSession get(ServerPlayer caller, String command) {
-        return withReadLock(() -> {
-            for (CommandSession session : sessionMap.values()) {
-                if (session.isMatches(caller.getUUID(), command)) {
-                    return session;
-                }
+    public @Nullable CommandSession get(ServerPlayer caller, String command) {
+        for (CommandSession session : sessionMap.values()) {
+            if (session.isMatches(caller.getUUID(), command)) {
+                return session;
             }
-            return null;
-        }).orElse(null);
+        }
+        return null;
     }
 }

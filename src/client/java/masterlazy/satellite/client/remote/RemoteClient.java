@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.Context;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,12 +25,20 @@ public class RemoteClient {
     private final SshServer sshServer = new SshServer();
     private boolean remoteAvailable = false;
 
-    private final ResponseManager<CommandS2CPayload> commandResponseManager = new ResponseManager<>();
-    private final BlockingQueue<ConsoleFeedS2CPayload> feedQueue = new LinkedBlockingQueue<>();
+    public static final Duration COMMAND_TIMEOUT = Duration.ofSeconds(30);
+    public static final Duration GAME_ALIVE_CHECK_BETWEEN = Duration.ofMillis(100);
 
-    public final int COMMAND_TIMEOUT_SECONDS = 30;
-    public final int FEED_OFFER_TIMEOUT_MILLISECONDS = 10;
-    public final int FEED_TIMEOUT_MILLISECONDS = 10;
+    public static final Duration FEED_OFFER_TIMEOUT = Duration.ofMillis(10);
+    public static final Duration FEED_TIMEOUT = Duration.ofMillis(10);
+    public static final int MAX_FEED_QUEUE_SIZE = 1024;
+
+    public static final Duration FILE_OFFER_TIMEOUT = Duration.ofSeconds(5);
+    public static final Duration FILE_TIMEOUT = Duration.ofSeconds(5);
+    public static final int MAX_FILE_QUEUE_SIZE = 1024;
+
+    private final ResponseManager<CommandS2CPayload> commandResponseManager = new ResponseManager<>();
+    private final BlockingQueue<ConsoleFeedS2CPayload> feedQueue = new LinkedBlockingQueue<>(MAX_FEED_QUEUE_SIZE);
+    private final ConcurrentHashMap<UUID, BlockingQueue<FileS2CPayload>> fileQueues = new ConcurrentHashMap<>();
 
     private final char[] spinner = {'/', '-', '\\', '|'};
     private final ScheduledExecutorService animationScheduler = Executors.newSingleThreadScheduledExecutor();
@@ -43,6 +52,8 @@ public class RemoteClient {
         ClientPlayNetworking.registerGlobalReceiver(HelloS2CPayload.ID, this::sendHelloS2C);
         ClientPlayNetworking.registerGlobalReceiver(CommandS2CPayload.ID, commandResponseManager::handle);
         ClientPlayNetworking.registerGlobalReceiver(ConsoleFeedS2CPayload.ID, this::handleConsoleFeedS2C);
+        ClientPlayNetworking.registerGlobalReceiver(FileS2CPayload.ID, this::handleFileS2C);
+
         // TODO: I don't know why these two work well in dev client but don't work in formal client
         ClientPlayConnectionEvents.DISCONNECT.register((listener, client) -> shutdown());
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> shutdown());
@@ -50,7 +61,7 @@ public class RemoteClient {
         exitScheduler.scheduleAtFixedRate(
                 () -> { if (!SatelliteClient.isInGame()) shutdown(); },
                 0,
-                100,
+                GAME_ALIVE_CHECK_BETWEEN.toMillis(),
                 TimeUnit.MILLISECONDS
         );
     }
@@ -71,19 +82,31 @@ public class RemoteClient {
 
     private void handleConsoleFeedS2C(ConsoleFeedS2CPayload payload, Context context) {
         try {
-            if (feedQueue.offer(payload, FEED_OFFER_TIMEOUT_MILLISECONDS, TimeUnit.MILLISECONDS)) {
+            if (feedQueue.offer(payload, FEED_OFFER_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
                 return;
             }
         } catch (Exception ignored) {}
-        Satellite.LOGGER.error("Failed to offer feed to feedQueue");
+        Satellite.LOGGER.error("Failed to offer feedQueue");
+    }
+
+    private void handleFileS2C(FileS2CPayload payload, Context context) {
+        try {
+            if (getFileQueueFor(payload.sessionId()).offer(payload, FILE_OFFER_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
+                return;
+            }
+        } catch (Exception ignored) {}
+        Satellite.LOGGER.error("Failed to offer fileQueue (sessionId={})", payload.sessionId());
+    }
+
+    public BlockingQueue<FileS2CPayload> getFileQueueFor(UUID sessionId) {
+        return fileQueues.computeIfAbsent(sessionId, k -> new LinkedBlockingQueue<>(MAX_FILE_QUEUE_SIZE));
     }
 
     /**
      * Send CommandC2SPayload and wait for response
      * @return `null` if response timeout
      */
-    @Nullable
-    public CommandS2CPayload sendAndWait(ShellContext ctx, CommandEnum command, @Nullable String[] args) throws InterruptedException, ExecutionException {
+    public @Nullable CommandS2CPayload sendAndWait(ShellContext ctx, CommandEnum command, @Nullable String[] args) throws InterruptedException, ExecutionException {
         AtomicInteger index = new AtomicInteger(0);
         ScheduledFuture<?> animTask = animationScheduler.scheduleAtFixedRate(() -> ctx.print("\r" + spinner[index.getAndIncrement() % spinner.length] + " "),
                 0, 100, TimeUnit.MILLISECONDS);
@@ -91,10 +114,10 @@ public class RemoteClient {
         Future<CommandS2CPayload> future = commandResponseManager.responseFor(requestId);
         ClientPlayNetworking.send(new CommandC2SPayload(requestId, ctx.token(), command, args == null ? new String[0] : args));
         try {
-            return future.get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            return future.get(COMMAND_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
             animTask.cancel(true);
-            ctx.println("\r\033[31mResponse timeout after "+COMMAND_TIMEOUT_SECONDS+"s\033[0m");
+            ctx.println("\r\033[31mResponse timeout after "+COMMAND_TIMEOUT.toMillis()+"ms\033[0m");
             future.cancel(true);
             return null;
         } finally {
@@ -103,8 +126,7 @@ public class RemoteClient {
         }
     }
 
-    @Nullable
-    public ConsoleFeedS2CPayload pollFeed() throws InterruptedException {
-        return feedQueue.poll(FEED_TIMEOUT_MILLISECONDS, TimeUnit.MILLISECONDS);
+    public @Nullable ConsoleFeedS2CPayload pollFeed() throws InterruptedException {
+        return feedQueue.poll(FEED_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
     }
 }

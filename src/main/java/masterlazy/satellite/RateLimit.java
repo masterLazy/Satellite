@@ -33,14 +33,14 @@ public class RateLimit {
         if (rate > 0) rate--;
     }
 
-    public long getTryAfterSeconds() {
+    public int getTryAfterSeconds() {
         Instant now = Instant.now();
         if (resetAt.isBefore(now)) {
             resetAt = now.plus(rateReset);
             rate = 0;
         }
         if (rate >= rateLimit) {
-            return Duration.between(now, resetAt).toSeconds();
+            return (int)Duration.between(now, resetAt).toSeconds();
         }
         return 0;
     }

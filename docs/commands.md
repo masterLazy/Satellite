@@ -32,3 +32,11 @@
 /guard decline
 ```
 
+## Remote (需安装客户端)
+
+```
+/satellite status
+/satellite cli start
+/satellite cli close
+```
+

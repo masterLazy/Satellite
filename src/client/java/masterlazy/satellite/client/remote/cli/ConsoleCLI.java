@@ -129,11 +129,20 @@ public class ConsoleCLI {
                     }
                     // Restore input line
                     if (!restoreInput) continue;
-                    ctx.write("\r" + getPrompt() + sb + "\033[K");
-                    for (int i = sb.length() - 1; i >= cursorAt; i--) {
-                        ctx.write('\b');
+                    if (!sb.isEmpty()) {
+                        ctx.write("\r" + getPrompt() + sb + "\033[K");
+                        for (int i = sb.length() - 1; i >= cursorAt; i--) {
+                            ctx.write('\b');
+                        }
+                        ctx.flush();
+                    } else {
+                        final String hint = "Type 'exit' to disconnect";
+                        ctx.write("\r" + getPrompt() + "\033[90m" + hint + "\033[0m\033[K");
+                        for (int i = 0; i < hint.length(); i++) {
+                            ctx.write('\b');
+                        }
+                        ctx.flush();
                     }
-                    ctx.flush();
                 } catch (UnauthorizedException e) {
                     ctx.renewToken();
                     if (ctx.token() == null) throw e;

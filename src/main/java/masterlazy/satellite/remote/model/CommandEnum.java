@@ -15,6 +15,9 @@ public enum CommandEnum {
     MKDIR,
     TOUCH,
 
+    GET,
+    PUT,
+
     UNKNOWN;
 
     public static CommandEnum from(String string) {

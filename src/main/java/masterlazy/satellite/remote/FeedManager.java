@@ -8,15 +8,19 @@ import net.minecraft.server.level.ServerPlayer;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-// TODO: 增加定时清理无效会话逻辑
 public class FeedManager {
     private final RemoteSessionManager remoteSessionManager;
     private final HashMap<String, Instant> subscribers = new HashMap<>(); // <token, expireAt>
@@ -68,6 +72,7 @@ public class FeedManager {
     }
 
     public synchronized boolean subscribe(String token) {
+        if (!remoteConsoleAvailable) return false;
         RemoteSession session = remoteSessionManager.getValid(token);
         if (session == null) return false;
         subscribers.put(token, (Instant.now().plus(TIMEOUT_SUBSCRIBE)));

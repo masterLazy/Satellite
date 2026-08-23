@@ -6,12 +6,14 @@ import org.jetbrains.annotations.Nullable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class RemoteSessionManager {
-    private static final Duration CHECK_BETWEEN = Duration.ofSeconds(10);
-    private final Map<String, RemoteSession> sessionMap = new ConcurrentHashMap<>();
+public class FileSessionManager {
+    private final Map<UUID, FileSession> sessionMap = new ConcurrentHashMap<>();
+
     private Instant nextCheck = Instant.now();
+    private static final Duration CHECK_BETWEEN = Duration.ofSeconds(10);
 
     public void onInitialize() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -22,14 +24,13 @@ public class RemoteSessionManager {
         });
     }
 
-    public @Nullable RemoteSession registerFor(String owner) {
-        RemoteSession session = new RemoteSession(owner);
-        sessionMap.put(session.getToken(), session);
-        return session;
+    public void put(FileSession session) {
+        sessionMap.put(session.getId(), session);
     }
 
-    public @Nullable RemoteSession getValid(String token) {
-        RemoteSession session = sessionMap.get(token);
+    @Nullable
+    public FileSession getValid(UUID id) {
+        FileSession session = sessionMap.get(id);
         if (session == null || session.isExpiredWhen(Instant.now())) {
             return null;
         }

@@ -3,19 +3,23 @@ package masterlazy.satellite.remote;
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.auth.AuthService;
 import masterlazy.satellite.remote.handler.EventHandler;
+import masterlazy.satellite.remote.model.Request;
 import masterlazy.satellite.remote.model.Status;
 import masterlazy.satellite.remote.payload.*;
 import masterlazy.satellite.remote.pipeline.CommandHandler;
+import masterlazy.satellite.remote.pipeline.FileHandler;
 import masterlazy.satellite.remote.pipeline.HelloHandler;
 import masterlazy.satellite.remote.pipeline.PayloadHandler;
-import masterlazy.satellite.remote.model.Request;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.Context;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class RemoteService {
@@ -23,6 +27,7 @@ public class RemoteService {
 
     private final RemoteSessionManager remoteSessionManager;
     private final FeedManager feedManager;
+    private final FileSessionManager fileSessionManager;
 
     private final EventHandler eventHandler;
 
@@ -31,10 +36,12 @@ public class RemoteService {
     public RemoteService(AuthService authService) {
         remoteSessionManager = new RemoteSessionManager();
         feedManager = new FeedManager(remoteSessionManager);
+        fileSessionManager = new FileSessionManager();
         eventHandler = new EventHandler(this);
         // Handlers
         handlers.put(HelloC2SPayload.ID, new HelloHandler());
         handlers.put(CommandC2SPayload.ID, new CommandHandler(this, authService, feedManager));
+        handlers.put(FileC2SPayload.ID, new FileHandler(this, remoteSessionManager));
     }
 
     public void onInitialize() {
@@ -51,6 +58,10 @@ public class RemoteService {
         ServerPlayNetworking.registerGlobalReceiver(CommandC2SPayload.ID, this::dispatcher);
         // Console Feed
         PayloadTypeRegistry.playS2C().register(ConsoleFeedS2CPayload.ID, ConsoleFeedS2CPayload.CODEC);
+        // File
+        PayloadTypeRegistry.playS2C().register(FileS2CPayload.ID, FileS2CPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(FileC2SPayload.ID, FileC2SPayload.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(FileC2SPayload.ID, this::dispatcher);
     }
 
     @SuppressWarnings("unchecked")
@@ -59,7 +70,7 @@ public class RemoteService {
         if (handler == null) {
             Satellite.LOGGER.error("[Satellite] Can't find handler for '{}' payload", payload.type());
         } else {
-            handler.handle(new Request<>(payload, ctx));
+            CompletableFuture.runAsync(() -> handler.handle(new Request<>(payload, ctx)));
         }
     }
 
@@ -70,8 +81,9 @@ public class RemoteService {
             respond.accept(Status.UNAUTHORIZED);
             return true;
         }
-        if (!session.getOwner().equals(request.sender())) {
+        if (!session.getOwner().equals(request.sender())) { // Token not belong to sender
             respond.accept(Status.FORBIDDEN);
+            Satellite.LOGGER.warn("[Satellite] {} offered a token that doesn't belong to they!", request.sender());
             return true;
         }
         if (!session.tryRequest()) {
@@ -81,7 +93,17 @@ public class RemoteService {
         return false;
     }
 
-    public String getTokenFor(String owner) {
-        return remoteSessionManager.registerFor(owner).getToken();
+    public @Nullable String getTokenFor(String owner) {
+        RemoteSession session = remoteSessionManager.registerFor(owner);
+        if (session == null) return null;
+        return session.getToken();
+    }
+
+    public void putFileSession(FileSession session) {
+        fileSessionManager.put(session);
+    }
+
+    public @Nullable FileSession getFileSession(UUID id) {
+        return fileSessionManager.getValid(id);
     }
 }
