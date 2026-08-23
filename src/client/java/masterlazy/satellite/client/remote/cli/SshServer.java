@@ -13,7 +13,8 @@ import java.util.List;
 public class SshServer {
     private org.apache.sshd.server.SshServer sshd;
 
-    private static final int PREFERRED_PORT = 2121;
+    // "Satellite CLI".hashCode() mod 65536
+    private static final int PREFERRED_PORT = 29819;
 
     private boolean running;
 
@@ -22,7 +23,7 @@ public class SshServer {
     private void setupSshd() {
         sshd = org.apache.sshd.server.SshServer.setUpDefaultServer();
         sshd.setShellFactory(new SatelliteShellFactory());
-        sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(Paths.get(Satellite.BASE_DIR, "hostkey.ser")));
+        sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(Paths.get(System.getProperty("user.home"), "satellite-cli-hostkey.ser")));
         sshd.setHost("127.0.0.1"); // localhost
         // Config none verification
         sshd.setPasswordAuthenticator((u, p, ss) -> true);
