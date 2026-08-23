@@ -1,5 +1,6 @@
 package masterlazy.satellite.client.remote;
 
+import masterlazy.satellite.Satellite;
 import masterlazy.satellite.client.SatelliteClient;
 import masterlazy.satellite.client.remote.cli.ConsoleCLI;
 import masterlazy.satellite.client.remote.cli.ShellContext;
@@ -27,6 +28,7 @@ public class RemoteClient {
     private final BlockingQueue<ConsoleFeedS2CPayload> feedQueue = new LinkedBlockingQueue<>();
 
     public final int COMMAND_TIMEOUT_SECONDS = 30;
+    public final int FEED_OFFER_TIMEOUT_MILLISECONDS = 10;
     public final int FEED_TIMEOUT_MILLISECONDS = 10;
 
     private final char[] spinner = {'/', '-', '\\', '|'};
@@ -36,20 +38,14 @@ public class RemoteClient {
     public boolean isRemoteAvailable() { return remoteAvailable; }
 
     public void onInitialize() {
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->{
-            SatelliteCommand.register(dispatcher, this, sshServer);
-        });
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> SatelliteCommand.register(dispatcher, this, sshServer));
         // Payloads
         ClientPlayNetworking.registerGlobalReceiver(HelloS2CPayload.ID, this::handleHelloS2C);
         ClientPlayNetworking.registerGlobalReceiver(CommandS2CPayload.ID, commandResponseManager::handle);
         ClientPlayNetworking.registerGlobalReceiver(ConsoleFeedS2CPayload.ID, this::handleConsoleFeedS2C);
         // TODO: I don't know why these two work well in dev client but don't work in formal client
-        ClientPlayConnectionEvents.DISCONNECT.register((listener, client)->{
-            shutdown();
-        });
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
-            shutdown();
-        });
+        ClientPlayConnectionEvents.DISCONNECT.register((listener, client) -> shutdown());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> shutdown());
         // So I added this to make sure ssh server is closed when leaving game
         exitScheduler.scheduleAtFixedRate(
                 () -> { if (!SatelliteClient.isInGame()) shutdown(); },
@@ -73,7 +69,12 @@ public class RemoteClient {
     }
 
     private void handleConsoleFeedS2C(ConsoleFeedS2CPayload payload, Context context) {
-        feedQueue.offer(payload);
+        try {
+            if (feedQueue.offer(payload, FEED_OFFER_TIMEOUT_MILLISECONDS, TimeUnit.MILLISECONDS)) {
+                return;
+            }
+        } catch (Exception ignored) {}
+        Satellite.LOGGER.error("Failed to offer feed to feedQueue");
     }
 
     /**
@@ -83,9 +84,8 @@ public class RemoteClient {
     @Nullable
     public CommandS2CPayload sendAndWait(ShellContext ctx, CommandEnum command, @Nullable String[] args) throws InterruptedException, ExecutionException {
         AtomicInteger index = new AtomicInteger(0);
-        ScheduledFuture<?> animTask = animationScheduler.scheduleAtFixedRate(() -> {
-            ctx.print("\r" + spinner[index.getAndIncrement() % spinner.length] + " ");
-        }, 0, 100, TimeUnit.MILLISECONDS);
+        ScheduledFuture<?> animTask = animationScheduler.scheduleAtFixedRate(() -> ctx.print("\r" + spinner[index.getAndIncrement() % spinner.length] + " "),
+                0, 100, TimeUnit.MILLISECONDS);
         UUID requestId = UUID.randomUUID();
         Future<CommandS2CPayload> future = commandResponseManager.responseFor(requestId);
         ClientPlayNetworking.send(new CommandC2SPayload(requestId, ctx.token(), command, args == null ? new String[0] : args));

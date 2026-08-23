@@ -25,6 +25,9 @@ public class SatelliteCommand {
                 source.sendFeedback(Component.literal(Satellite.lang("remote.cli.started")));
                 return 1;
             }
+            if (!client.isRemoteAvailable()) {
+                source.sendFeedback(Component.literal(Satellite.lang("remote.status.unavailable")));
+            }
             int port = sshServer.start();
             if (port != -1) {
                 source.sendFeedback(Component.literal(String.format(Satellite.lang("remote.cli.start"), port)));

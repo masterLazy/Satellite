@@ -93,7 +93,7 @@
   "================== REMOTE MODULE ==================" :  "",
 
   "remote.status.available": "§eSatellite远程会话可用",
-  "remote.status.unavailable": "§eSatellite远程会话不可用",
+  "remote.status.unavailable": "§cSatellite远程会话不可用",
   "remote.cli.start": "§bSatellite CLI已在localhost启动，端口：%d",
   "remote.cli.started": "§cSatellite CLI已启动",
   "remote.cli.startFailed": "§cSatellite CLI启动失败",
