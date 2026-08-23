@@ -1,7 +1,7 @@
 package masterlazy.satellite.remote.payload;
 
-import masterlazy.satellite.remote.HasRequestId;
 import masterlazy.satellite.Satellite;
+import masterlazy.satellite.remote.HasRequestId;
 import masterlazy.satellite.remote.model.Status;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;

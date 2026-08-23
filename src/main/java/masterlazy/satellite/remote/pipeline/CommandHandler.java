@@ -54,7 +54,13 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
 
     @Override
     public boolean handle(Request<CommandC2SPayload> request) {
-        Satellite.B_LOGGER.debug("%s >> CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(request.payload()));
+        if (request.payload().command() == CommandEnum.AUTHORIZE) {
+            CommandC2SPayload payload = new CommandC2SPayload(request.payload().requestId(), request.payload().token(),
+                    request.payload().command(), new String[]{"password-protected"});
+            Satellite.B_LOGGER.debug("%s >> CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(payload));
+        } else {
+            Satellite.B_LOGGER.debug("%s >> CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(request.payload()));
+        }
         return pipeline.handle(request);
     }
 
