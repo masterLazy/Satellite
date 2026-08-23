@@ -8,7 +8,7 @@
 
   "login.logged": "§e你已经登录了",
   "login.unregistered": "§c你尚未注册！请使用 /register 注册",
-  "login.rateLimit": "§c鉴权速率达到上限，请稍后再试",
+  "login.rateLimit": "§c鉴权速率达到上限，请%ds后再试",
   "login.incorrectPwd": "§c密码不匹配，请重试",
   "login.success": "§e%s登录成功",
   "login.local": "§e正在跳过本地玩家%s的登录",

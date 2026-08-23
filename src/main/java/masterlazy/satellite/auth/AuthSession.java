@@ -21,7 +21,7 @@ public class AuthSession implements HasUuid {
 
     private ServerPlayer tempPlayer = null;
 
-    private final RateLimit authorizeLimit = new RateLimit(10, Duration.ofSeconds(60));
+    public final RateLimit rateLimit = new RateLimit(10, Duration.ofSeconds(60));
 
     public UUID getUUID() { return playerUUID; }
 
@@ -72,14 +72,6 @@ public class AuthSession implements HasUuid {
         player.setGameMode(gameMode); // Set game mode lastly; if not so will make player unable to sprint.
         Satellite.LOGGER.info("[Satellite] Restored {}", player.getName().getString());
         frozen = false;
-    }
-
-    public boolean tryAuthorize() {
-        return authorizeLimit.tryAcquire();
-    }
-
-    public void revertAuthorizeRate() {
-        authorizeLimit.revertRate();
     }
 
     public void setTempPlayer(ServerPlayer player) {

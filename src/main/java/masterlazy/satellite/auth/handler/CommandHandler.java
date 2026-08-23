@@ -2,11 +2,11 @@ package masterlazy.satellite.auth.handler;
 
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.auth.AuthService;
+import masterlazy.satellite.auth.AuthSession;
 import masterlazy.satellite.auth.AuthUtils;
 import masterlazy.satellite.auth.command.LoginCommand;
 import masterlazy.satellite.auth.command.PasswordCommand;
 import masterlazy.satellite.auth.command.RegisterCommand;
-import masterlazy.satellite.auth.AuthSession;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -43,12 +43,12 @@ public class CommandHandler {
             Satellite.sendMessageWithKey(player, "login.logged");
         } else if (!service.isRegistered(player)) {
             Satellite.sendMessageWithKey(player, "login.unregistered");
-        } else if (!session.tryAuthorize()) {
-            Satellite.sendMessageWithKey(player, "login.rateLimit");
+        } else if (!session.rateLimit.tryAcquire()) {
+            Satellite.sendMessageWithKey(player, "login.rateLimit", session.rateLimit.getTryAfterSeconds());
         } else if (!service.isCorrectPassword(username, password)) {
             Satellite.sendMessageWithKey(player, "login.incorrectPwd");
         } else {
-            session.revertAuthorizeRate();
+            session.rateLimit.revertRate();
             session.setLoggedIn(true);
             session.restorePlayer();
 

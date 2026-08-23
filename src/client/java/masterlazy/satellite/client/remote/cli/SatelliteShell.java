@@ -143,7 +143,13 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
                     } else if (response.status() == Status.UNAUTHORIZED) {
                         println("Wrong password.");
                     } else if (response.status() == Status.TOO_MANY_REQUEST) {
-                        println("\033[31mAuthorization rate limit exceeded. Try later.\033[0m");
+                        String msg;
+                        if (response.results().length > 0) {
+                            msg = response.results()[0];
+                        } else {
+                            msg = "Try later.";
+                        }
+                        println(String.format("\033[31mAuthorization rate limit exceeded. %s\033[0m", msg));
                     } else {
                         println("Authorization failed: " + response.status().name());
                     }

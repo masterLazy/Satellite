@@ -106,8 +106,8 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         if (session == null) {
             return respond(request, Status.FORBIDDEN, null);
         }
-        if (!session.tryAuthorize()) {
-            return respond(request, Status.TOO_MANY_REQUEST, null);
+        if (!session.rateLimit.tryAcquire()) {
+            return respond(request, Status.TOO_MANY_REQUEST, new String[]{String.format("Try after %ds", session.rateLimit.getTryAfterSeconds())});
         }
         String[] args = payload.args();
         if (args.length < 1) {
@@ -116,6 +116,7 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         if (!authService.isCorrectPassword(request.sender(), args[0])) {
             return respond(request, Status.UNAUTHORIZED, null);
         }
+        session.rateLimit.revertRate();
         String token = service.getTokenFor(request.sender());
         if (token == null) {
             return respond(request, Status.INTERNAL_SERVER_ERROR, null);

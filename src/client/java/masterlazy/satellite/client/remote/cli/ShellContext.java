@@ -1,5 +1,6 @@
 package masterlazy.satellite.client.remote.cli;
 
+import masterlazy.satellite.remote.payload.CommandS2CPayload;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
@@ -44,5 +45,13 @@ public interface ShellContext {
      */
     default void println(String s) {
         print(s + "\r\n");
+    }
+
+    default void reportFailure(String action, CommandS2CPayload payload) {
+        if (payload.results().length > 0) {
+            println("\033[31mFailed to "+action+": "+payload.status().name()+": "+payload.results()[0]+"\033[0m");
+        } else {
+            println("\033[31mFailed to "+action+": "+payload.status().name()+"\033[0m");
+        }
     }
 }

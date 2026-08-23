@@ -68,7 +68,7 @@ public class ConsoleCLI {
                             } else if (response.status() == Status.UNAUTHORIZED) {
                                 throw new UnauthorizedException();
                             } else if (response.status() != Status.OK || response.results().length < 1) {
-                                ctx.println("\033[31mFailed to sync console stream\033[0m");
+                                ctx.reportFailure("sync console stream", response);
                                 continue;
                             }
                             cli.clear();
@@ -155,7 +155,7 @@ public class ConsoleCLI {
         } else if (response.status() == Status.UNAUTHORIZED) {
             throw new UnauthorizedException();
         } else if (response.status() != Status.OK) {
-            ctx.println("\033[31mFailed to subscribe console stream: "+response.status().name()+"\033[0m");
+            ctx.reportFailure("subscribe console stream", response);
             return false;
         }
         return true;
@@ -166,7 +166,7 @@ public class ConsoleCLI {
         if (response == null) {
             ctx.println("\033[31mFailed to unsubscribe console stream \033[0m");
         } else if (response.status() != Status.OK) {
-            ctx.println("\033[31mFailed to unsubscribe console stream"+response.status().name()+"\033[0m");
+            ctx.reportFailure("unsubscribe console stream", response);
         }
     }
 
@@ -177,7 +177,7 @@ public class ConsoleCLI {
         } else if (response.status() == Status.UNAUTHORIZED) {
             throw new UnauthorizedException();
         } else if (response.status() != Status.OK) {
-            ctx.println("\033[31mFailed to execute: "+response.status().name()+"\033[0m");
+            ctx.reportFailure("execute", response);
         }
     }
 

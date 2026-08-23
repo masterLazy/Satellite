@@ -32,4 +32,16 @@ public class RateLimit {
     public void revertRate() {
         if (rate > 0) rate--;
     }
+
+    public long getTryAfterSeconds() {
+        Instant now = Instant.now();
+        if (resetAt.isBefore(now)) {
+            resetAt = now.plus(rateReset);
+            rate = 0;
+        }
+        if (rate >= rateLimit) {
+            return Duration.between(now, resetAt).toSeconds();
+        }
+        return 0;
+    }
 }

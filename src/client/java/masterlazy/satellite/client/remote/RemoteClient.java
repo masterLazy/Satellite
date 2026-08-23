@@ -40,7 +40,7 @@ public class RemoteClient {
     public void onInitialize() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> SatelliteCommand.register(dispatcher, this, sshServer));
         // Payloads
-        ClientPlayNetworking.registerGlobalReceiver(HelloS2CPayload.ID, this::handleHelloS2C);
+        ClientPlayNetworking.registerGlobalReceiver(HelloS2CPayload.ID, this::sendHelloS2C);
         ClientPlayNetworking.registerGlobalReceiver(CommandS2CPayload.ID, commandResponseManager::handle);
         ClientPlayNetworking.registerGlobalReceiver(ConsoleFeedS2CPayload.ID, this::handleConsoleFeedS2C);
         // TODO: I don't know why these two work well in dev client but don't work in formal client
@@ -56,12 +56,13 @@ public class RemoteClient {
     }
 
     private void shutdown() {
+        if (!sshServer.isRunning()) return;
         sshServer.close();
         remoteAvailable = false;
         ConsoleCLI.isRunning = false;
     }
 
-    private void handleHelloS2C(HelloS2CPayload payload, Context context) {
+    private void sendHelloS2C(HelloS2CPayload payload, Context context) {
         if (ClientPlayNetworking.canSend(HelloC2SPayload.ID.id()) && payload.version().equals(RemoteService.VERSION)) {
             ClientPlayNetworking.send(new HelloC2SPayload(true));
             remoteAvailable = true;

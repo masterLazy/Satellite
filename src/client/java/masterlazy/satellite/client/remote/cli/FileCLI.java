@@ -96,11 +96,7 @@ public class FileCLI {
             if (response.status() == Status.UNAUTHORIZED) throw new UnauthorizedException();
         }
         if (response.status() != Status.OK) {
-            if (response.results().length < 1) {
-                ctx.println("\033[31mFailed to " + action + ": "+response.status().name() + "\033[0m");
-            } else {
-                ctx.println("\033[31mFailed to " + action + ": " + response.status().name() + ": " + response.results()[0] + "\033[0m");
-            }
+            ctx.reportFailure(action, response);
         }
     }
 
@@ -116,11 +112,7 @@ public class FileCLI {
             if (response.status() == Status.UNAUTHORIZED) throw new UnauthorizedException();
         }
         if (response.status() != Status.OK) {
-            if (response.results().length < 1) {
-                ctx.println("\033[31mFailed to remove: " + response.status().name() + "\033[0m");
-            } else {
-                ctx.println("\033[31mFailed to remove: " + response.status().name() + ": " + response.results()[0] + "\033[0m");
-            }
+            ctx.reportFailure("remove", response);
         }
     }
 
@@ -142,11 +134,7 @@ public class FileCLI {
             if (response.status() == Status.UNAUTHORIZED) throw new UnauthorizedException();
         }
         if (response.status() != Status.OK) {
-            if (response.results().length < 1) {
-                ctx.println("\033[31mFailed to " + action + ": " + response.status().name() + "\033[0m");
-            } else {
-                ctx.println("\033[31mFailed to " + action + ": " + response.status().name() + ": " + response.results()[0] + "\033[0m");
-            }
+            ctx.reportFailure(action, response);
         }
     }
 
@@ -191,11 +179,7 @@ public class FileCLI {
         if (response.status() == Status.NOT_FOUND) {
             return null;
         } else if (response.status() != Status.OK) {
-            if (response.results().length < 1) {
-                ctx.println("\033[31mFailed to list: "+response.status().name() + "\033[0m");
-            } else {
-                ctx.println("\033[31mFailed to list: " + response.status().name() + " " + response.results()[0] + "\033[0m");
-            }
+            ctx.reportFailure("list", response);
             return null;
         } else if (response.results().length < 1) {
             ctx.println("\033[31mFailed to list: invalid response from server\033[0m");

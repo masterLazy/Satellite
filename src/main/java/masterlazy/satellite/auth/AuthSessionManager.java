@@ -26,7 +26,7 @@ public class AuthSessionManager extends SessionManager<AuthSession> {
         AuthSession session = get(player.getUUID());
         if (session == null) return;
         if (session.isFrozen()) session.restorePlayer();
-        if (session.isLoggedIn() || session.tryAuthorize()) expire(session);
+        if (session.isLoggedIn() || session.rateLimit.tryAcquire()) expire(session);
         session.setTempPlayer(null);
     }
 }

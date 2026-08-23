@@ -16,8 +16,6 @@ public class SshServer {
     // "Satellite CLI".hashCode() mod 65536
     private static final int PREFERRED_PORT = 29819;
 
-    private boolean running;
-
     public SshServer() {}
 
     private void setupSshd() {
@@ -41,7 +39,7 @@ public class SshServer {
     }
 
     public boolean isRunning() {
-        return running;
+        return sshd != null;
     }
 
     public int start() {
@@ -58,7 +56,6 @@ public class SshServer {
                 return -1;
             }
         }
-        running = true;
         Satellite.LOGGER.info("[Satellite Client] Remote console SSH server is running on port: {}", sshd.getPort());
         return sshd.getPort();
     }
@@ -66,12 +63,13 @@ public class SshServer {
     public boolean close() {
         try {
             sshd.close(true);
-            running = false;
             Satellite.LOGGER.info("[Satellite Client] Remote console SSH server closed");
             return true;
         } catch (Exception e) {
             Satellite.LOGGER.error("[Satellite Client] Failed to close remote console SSH server", e);
             return false;
+        } finally {
+            sshd = null;
         }
     }
 }
