@@ -93,7 +93,7 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
 
     private boolean handleSingleGame(Request<CommandC2SPayload> request) {
         CommandC2SPayload payload = request.payload();
-        if (!Satellite.isSingleGame()) return false;
+        if (Satellite.isMultiPlayer()) return false;
         if (payload.command() == CommandEnum.AUTHORIZE) {
             String token = service.getTokenFor(request.sender());
             if (token == null) return respond(request, Status.INTERNAL_SERVER_ERROR, null);

@@ -1,6 +1,7 @@
 package masterlazy.satellite.remote.payload;
 
 import io.netty.buffer.ByteBuf;
+import masterlazy.satellite.Config;
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.remote.model.CommandEnum;
 import masterlazy.satellite.remote.model.FilePayloadType;
@@ -87,5 +88,13 @@ public class Codecs {
             Satellite.LOGGER.error("[Satellite] Failed to uncompress bytes", e);
             throw new RuntimeException(e);
         }
+    });
+
+    // Config
+    public static final StreamCodec<ByteBuf, Config> CONFIG = StreamCodec.of((buf, load) -> {
+        ByteBufCodecs.STRING_UTF8.encode(buf, Satellite.GSON.toJson(load));
+    }, buf -> {
+        String s = ByteBufCodecs.STRING_UTF8.decode(buf);
+        return Satellite.GSON.fromJson(s, Config.class);
     });
 }

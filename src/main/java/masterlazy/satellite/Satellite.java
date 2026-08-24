@@ -23,9 +23,13 @@ import net.minecraft.sounds.SoundSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -41,9 +45,11 @@ public class Satellite implements ModInitializer {
     public static MinecraftServer Server;
     public static LangManager langManager = new LangManager();
 
-    private final AuthService authService = new AuthService(BASE_DIR);
-    private final GuardService guardService = new GuardService(BASE_DIR);
-    private final RemoteService remoteService = new RemoteService(authService);
+    private static final AuthService authService = new AuthService(BASE_DIR);
+    private static final GuardService guardService = new GuardService(BASE_DIR);
+    private static final RemoteService remoteService = new RemoteService(authService);
+
+    public static Config config;
 
     @Override
     public void onInitialize() {
@@ -53,15 +59,45 @@ public class Satellite implements ModInitializer {
             LOGGER.error("[Satellite] Failed to create base directory {}", BASE_DIR, e);
         }
         ServerLifecycleEvents.SERVER_STARTED.register(server -> Server = server);
-        authService.onInitialize();
-        guardService.onInitialize();
-        remoteService.onInitialize();
+
+        // Load config
+        Path configFile = Paths.get(BASE_DIR, "config.json");
+        if (Files.exists(configFile)) {
+            try (BufferedReader reader = Files.newBufferedReader(configFile, StandardCharsets.UTF_8)) {
+                Config loaded = Satellite.GSON.fromJson(reader, Config.class);
+                if (loaded.version() == new Config().version()) {
+                    config = loaded;
+                    Satellite.LOGGER.info("[Satellite] Loaded {}", configFile);
+                } else {
+                    Satellite.LOGGER.warn("[Satellite] {} is not a compatible configuration file", configFile);
+                }
+            } catch (Exception e) {
+                Satellite.LOGGER.error("[Satellite] Failed to parse {}", configFile, e);
+            }
+        }
+        if (config == null) {
+            config = new Config();
+            Satellite.LOGGER.info("[Satellite] Loaded default configurations");
+            try (BufferedWriter writer = Files.newBufferedWriter(configFile, StandardCharsets.UTF_8)) {
+                Satellite.GSON.toJson(config, writer);
+                Satellite.LOGGER.info("[Satellite] Saved configuration");
+            } catch (Exception e) {
+                Satellite.LOGGER.error("[Satellite] Failed to write {}", configFile, e);
+            }
+        }
+
+        if (config!=null && config.remote_enabled()) remoteService.onInitialize();
+    }
+
+    public static void onDedicatedInitialize() {
+        if (config!=null && config.auth_enabled()) authService.onInitialize();
+        if (config!=null && config.guard_enabled()) guardService.onInitialize();
     }
 
     // Server
 
-    public static boolean isSingleGame() {
-        return !(Server instanceof DedicatedServer);
+    public static boolean isMultiPlayer() {
+        return Server instanceof DedicatedServer;
     }
 
     public static void execute(String command) {

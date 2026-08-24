@@ -1,5 +1,6 @@
 package masterlazy.satellite.guard;
 
+import masterlazy.satellite.Satellite;
 import masterlazy.satellite.guard.handler.CommandHandler;
 import masterlazy.satellite.guard.handler.EventHandler;
 import masterlazy.satellite.guard.model.ConditionEntry;
@@ -16,8 +17,12 @@ public class GuardService {
     private final CommandHandler commandHandler;
     private final EventHandler eventHandler;
 
-    public static final Duration TIMEOUT_CONFIRM = Duration.ofSeconds(30);
-    public static final Duration TIMEOUT_REQUEST_OP = Duration.ofSeconds(60);
+    public static Duration getConfirmTimeout() {
+        return Duration.ofSeconds(Satellite.config.guard_confirmTimeoutSeconds());
+    }
+    public static Duration getRequestOpTimeout() {
+        return Duration.ofSeconds(Satellite.config.guard_requestOpTimeoutSeconds());
+    }
 
     public GuardService(String baseDir) {
         ruleRepository = new RuleRepository(baseDir);
@@ -27,9 +32,11 @@ public class GuardService {
     }
 
     public void onInitialize() {
+        ruleRepository.onInitialize();
         commandSessionManager.onInitialize();
         commandHandler.register();
         eventHandler.register();
+        Satellite.LOGGER.info("[Satellite] Initialized Guard module");
     }
 
     @Nullable

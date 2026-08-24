@@ -25,6 +25,7 @@ import java.util.function.Consumer;
 public class RemoteService {
     public static final String VERSION = "v1";
 
+    private final AuthService authService;
     private final RemoteSessionManager remoteSessionManager;
     private final FeedManager feedManager;
     private final FileSessionManager fileSessionManager;
@@ -37,16 +38,14 @@ public class RemoteService {
         remoteSessionManager = new RemoteSessionManager();
         feedManager = new FeedManager(remoteSessionManager);
         fileSessionManager = new FileSessionManager();
-        eventHandler = new EventHandler(this);
-        // Handlers
-        handlers.put(HelloC2SPayload.ID, new HelloHandler());
-        handlers.put(CommandC2SPayload.ID, new CommandHandler(this, authService, feedManager));
-        handlers.put(FileC2SPayload.ID, new FileHandler(this, remoteSessionManager));
+        eventHandler = new EventHandler();
+        this.authService = authService;
     }
 
     public void onInitialize() {
         remoteSessionManager.onInitialize();
         feedManager.onInitialize();
+        fileSessionManager.onInitialize();
         eventHandler.register();
         // Hello
         PayloadTypeRegistry.playS2C().register(HelloS2CPayload.ID, HelloS2CPayload.CODEC);
@@ -62,6 +61,11 @@ public class RemoteService {
         PayloadTypeRegistry.playS2C().register(FileS2CPayload.ID, FileS2CPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(FileC2SPayload.ID, FileC2SPayload.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(FileC2SPayload.ID, this::dispatcher);
+        // Handlers
+        handlers.put(HelloC2SPayload.ID, new HelloHandler());
+        handlers.put(CommandC2SPayload.ID, new CommandHandler(this, authService, feedManager));
+        handlers.put(FileC2SPayload.ID, new FileHandler(this, remoteSessionManager));
+        Satellite.LOGGER.info("[Satellite] Initialized Remote module");
     }
 
     @SuppressWarnings("unchecked")

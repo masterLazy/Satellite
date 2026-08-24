@@ -1,6 +1,7 @@
 package masterlazy.satellite.remote;
 
 import masterlazy.satellite.RateLimit;
+import masterlazy.satellite.Satellite;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -9,8 +10,7 @@ public class RemoteSession {
     private final String token;
     private final String owner;
 
-    private final RateLimit rateLimit = new RateLimit(1200, Duration.ofSeconds(60));
-    private static final Duration TIMEOUT_INACTIVITY = Duration.ofMinutes(30);
+    private final RateLimit rateLimit = new RateLimit(Satellite.config.remote_requestLimitPerMinute(), Duration.ofSeconds(60));
 
     private Instant expireAt;
 
@@ -33,7 +33,7 @@ public class RemoteSession {
     }
 
     private void refresh() {
-        expireAt = Instant.now().plus(TIMEOUT_INACTIVITY);
+        expireAt = Instant.now().plus(Duration.ofMinutes(Satellite.config.remote_sessionInactivityTimeoutMinutes()));
     }
 
     public boolean tryRequest() {

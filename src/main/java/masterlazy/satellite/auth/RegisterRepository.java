@@ -8,9 +8,9 @@ import org.jetbrains.annotations.Nullable;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.Files;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -24,6 +24,9 @@ public class RegisterRepository extends WithReadWriteLock {
 
     public RegisterRepository(String baseDir) {
         jsonFile = Paths.get(baseDir, FILE_NAME);
+    }
+
+    public void onInitialize() {
         if (Files.exists(jsonFile)) {
             load();
         } else {

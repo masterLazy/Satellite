@@ -15,12 +15,9 @@
 	"icon": "assets/satellite/icon.png",
 	"environment": "*",
 	"entrypoints": {
-		"main": [
-			"masterlazy.satellite.Satellite"
-		],
-		"client": [
-			"masterlazy.satellite.client.SatelliteClient"
-		]
+		"main": [ "masterlazy.satellite.Satellite" ],
+		"server": [ "masterlazy.satellite.SatelliteServer" ],
+		"client": [ "masterlazy.satellite.client.SatelliteClient" ]
 	},
 	"mixins": [
 		"satellite.mixins.json",

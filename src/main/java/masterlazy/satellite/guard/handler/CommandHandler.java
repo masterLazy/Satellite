@@ -5,7 +5,10 @@ import masterlazy.satellite.guard.CommandSession;
 import masterlazy.satellite.guard.CommandSessionManager;
 import masterlazy.satellite.guard.GuardService;
 import masterlazy.satellite.guard.command.GuardCommand;
-import masterlazy.satellite.guard.model.*;
+import masterlazy.satellite.guard.model.ConditionEntry;
+import masterlazy.satellite.guard.model.ConditionType;
+import masterlazy.satellite.guard.model.RuleAction;
+import masterlazy.satellite.guard.model.RuleEntry;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -245,9 +248,9 @@ public class CommandHandler {
             } else {
                 commandSessionManager.expire(session);
                 CommandSession session1 = new CommandSession(session.getCaller(), session.getCommand(), RuleAction.CONFIRM,
-                        Instant.now().plus(GuardService.TIMEOUT_CONFIRM));
+                        Instant.now().plus(GuardService.getConfirmTimeout()));
                 commandSessionManager.register(session1);
-                Satellite.sendMessageWithKey(player, "guard.cmd.approved", session.getCommand(), GuardService.TIMEOUT_CONFIRM.toSeconds());
+                Satellite.sendMessageWithKey(player, "guard.cmd.approved", session.getCommand(), GuardService.getConfirmTimeout().toSeconds());
             }
             if (session != null && session.getCaller() == null) {
                 commandSessionManager.expire(session);

@@ -1,5 +1,6 @@
 package masterlazy.satellite.client.remote;
 
+import masterlazy.satellite.Config;
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.client.SatelliteClient;
 import masterlazy.satellite.client.remote.cli.ConsoleCLI;
@@ -36,6 +37,8 @@ public class RemoteClient {
     public static final Duration FILE_POLL_TIMEOUT = Duration.ofSeconds(5);
     public static final int MAX_FILE_QUEUE_SIZE = 1024;
 
+    public static Config config;
+
     private final ResponseManager<CommandS2CPayload> commandResponseManager = new ResponseManager<>();
     private final BlockingQueue<ConsoleFeedS2CPayload> feedQueue = new LinkedBlockingQueue<>(MAX_FEED_QUEUE_SIZE);
     private final ConcurrentHashMap<UUID, BlockingQueue<FileS2CPayload>> fileQueues = new ConcurrentHashMap<>();
@@ -49,7 +52,7 @@ public class RemoteClient {
     public void onInitialize() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> SatelliteCommand.register(dispatcher, this, sshServer));
         // Payloads
-        ClientPlayNetworking.registerGlobalReceiver(HelloS2CPayload.ID, this::sendHelloS2C);
+        ClientPlayNetworking.registerGlobalReceiver(HelloS2CPayload.ID, this::handleHelloS2C);
         ClientPlayNetworking.registerGlobalReceiver(CommandS2CPayload.ID, commandResponseManager::handle);
         ClientPlayNetworking.registerGlobalReceiver(ConsoleFeedS2CPayload.ID, this::handleConsoleFeedS2C);
         ClientPlayNetworking.registerGlobalReceiver(FileS2CPayload.ID, this::handleFileS2C);
@@ -73,10 +76,17 @@ public class RemoteClient {
         ConsoleCLI.isRunning = false;
     }
 
-    private void sendHelloS2C(HelloS2CPayload payload, Context context) {
-        if (ClientPlayNetworking.canSend(HelloC2SPayload.ID.id()) && payload.version().equals(RemoteService.VERSION)) {
-            ClientPlayNetworking.send(new HelloC2SPayload(true));
-            remoteAvailable = true;
+    private void handleHelloS2C(HelloS2CPayload payload, Context context) {
+        Config config = payload.config();
+        if (ClientPlayNetworking.canSend(HelloC2SPayload.ID.id())) {
+            if (payload.version().equals(RemoteService.VERSION)) {
+                ClientPlayNetworking.send(new HelloC2SPayload(true));
+                remoteAvailable = true;
+            }
+            if (config.version() == new Config().version()) {
+                Satellite.LOGGER.warn("[Satellite Client] Server sent a version-unmatched config (version={})", config.version());
+            }
+            RemoteClient.config = config;
         }
     }
 
@@ -86,7 +96,7 @@ public class RemoteClient {
                 return;
             }
         } catch (Exception ignored) {}
-        Satellite.LOGGER.error("Failed to offer feedQueue");
+        Satellite.LOGGER.error("[Satellite Client] Failed to offer feedQueue");
     }
 
     private void handleFileS2C(FileS2CPayload payload, Context context) {
@@ -95,7 +105,7 @@ public class RemoteClient {
                 return;
             }
         } catch (Exception ignored) {}
-        Satellite.LOGGER.error("Failed to offer fileQueue (sessionId={})", payload.sessionId());
+        Satellite.LOGGER.error("[Satellite Client] Failed to offer fileQueue (sessionId={})", payload.sessionId());
     }
 
     public BlockingQueue<FileS2CPayload> getFileQueueFor(UUID sessionId) {

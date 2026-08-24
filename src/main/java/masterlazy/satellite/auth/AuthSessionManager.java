@@ -9,7 +9,7 @@ public class AuthSessionManager extends SessionManager<AuthSession> {
     public void onInitialize() {
         ServerPlayConnectionEvents.INIT.register((listener, server) -> onPlayerInit(listener.getPlayer()));
         ServerPlayConnectionEvents.DISCONNECT.register((listener, server) -> onServerPlayerDisconnect(listener.getPlayer()));
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> onServerStopped());
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> onServerStopping());
     }
 
     private void onPlayerInit(ServerPlayer player) {
@@ -29,7 +29,7 @@ public class AuthSessionManager extends SessionManager<AuthSession> {
         session.setTempPlayer(null);
     }
 
-    private void onServerStopped() {
+    private void onServerStopping() {
         for (AuthSession session : sessionMap.values()) {
             if (session == null) return;
             if (session.isFrozen()) session.restorePlayer();

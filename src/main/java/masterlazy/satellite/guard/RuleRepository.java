@@ -9,9 +9,9 @@ import org.jetbrains.annotations.Nullable;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +25,9 @@ public class RuleRepository extends WithReadWriteLock {
 
     public RuleRepository(String baseDir) {
         jsonFile = Paths.get(baseDir, FILE_NAME);
+    }
+
+    public void onInitialize()  {
         if (Files.exists(jsonFile)) {
             load();
         } else {

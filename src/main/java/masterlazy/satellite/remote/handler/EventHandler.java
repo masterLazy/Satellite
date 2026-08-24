@@ -8,12 +8,6 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
 public class EventHandler {
-    private final RemoteService service;
-
-    public EventHandler(RemoteService remoteService) {
-        service = remoteService;
-    }
-
     public void register() {
         ServerPlayConnectionEvents.JOIN.register((listener, sender, server) ->
                 onPlayerJoin(listener.getPlayer()));
@@ -21,7 +15,7 @@ public class EventHandler {
 
     private void onPlayerJoin(ServerPlayer player) {
         if (ServerPlayNetworking.canSend(player, HelloS2CPayload.ID.id())) {
-            HelloS2CPayload payload = new HelloS2CPayload(service.VERSION);
+            HelloS2CPayload payload = new HelloS2CPayload(RemoteService.VERSION, Satellite.config);
             ServerPlayNetworking.send(player, payload);
             Satellite.B_LOGGER.debug("%s << HelloS2CPayload:\n%s", player.getName().getString(), Satellite.GSON.toJson(payload));
         }

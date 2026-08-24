@@ -1,5 +1,6 @@
 package masterlazy.satellite.auth;
 
+import masterlazy.satellite.Satellite;
 import masterlazy.satellite.auth.handler.CommandHandler;
 import masterlazy.satellite.auth.handler.EventHandler;
 import masterlazy.satellite.auth.model.RegisterEntry;
@@ -20,9 +21,11 @@ public class AuthService {
     }
 
     public void onInitialize() {
+        registerRepository.onInitialize();
         authSessionManager.onInitialize();
         commandHandler.register();
         eventHandler.register();
+        Satellite.LOGGER.info("[Satellite] Initialized Auth module");
     }
 
     public boolean isRegistered(ServerPlayer player) {

@@ -2,9 +2,9 @@ package masterlazy.satellite.guard.handler;
 
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.SatelliteEvents;
+import masterlazy.satellite.guard.CommandSession;
 import masterlazy.satellite.guard.CommandSessionManager;
 import masterlazy.satellite.guard.GuardService;
-import masterlazy.satellite.guard.CommandSession;
 import masterlazy.satellite.guard.model.RuleAction;
 import masterlazy.satellite.guard.model.RuleEntry;
 import net.minecraft.network.chat.ClickEvent;
@@ -49,11 +49,11 @@ public class EventHandler {
                 return false;
             }
             case CONFIRM -> {
-                expireDuration = GuardService.TIMEOUT_CONFIRM;
+                expireDuration = GuardService.getConfirmTimeout();
                 Satellite.sendMessageWithKey(player, "guard.cmd.confirm", expireDuration.toSeconds());
             }
             case REQUEST_OP -> {
-                expireDuration = GuardService.TIMEOUT_REQUEST_OP;
+                expireDuration = GuardService.getRequestOpTimeout();
                 Satellite.sendMessageWithKey(player, "guard.cmd.requestOp", expireDuration.toSeconds());
             }
         }

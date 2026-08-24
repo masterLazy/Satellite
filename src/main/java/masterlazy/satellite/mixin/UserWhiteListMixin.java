@@ -1,6 +1,7 @@
 package masterlazy.satellite.mixin;
 
 import com.mojang.authlib.GameProfile;
+import masterlazy.satellite.Satellite;
 import net.minecraft.server.players.UserWhiteList;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -13,6 +14,10 @@ public class UserWhiteListMixin {
      */
     @Overwrite
     public String getKeyForUser(GameProfile gameProfile) {
-        return gameProfile.getName();
+        if (Satellite.config.mixin_whiteListCheckName()) {
+            return gameProfile.getName();
+        } else {
+            return gameProfile.getId().toString();
+        }
     }
 }

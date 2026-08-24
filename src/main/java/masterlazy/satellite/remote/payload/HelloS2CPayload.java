@@ -1,5 +1,6 @@
 package masterlazy.satellite.remote.payload;
 
+import masterlazy.satellite.Config;
 import masterlazy.satellite.Satellite;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -8,13 +9,16 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import org.jetbrains.annotations.NotNull;
 
 public record HelloS2CPayload (
-        String version
+        String version,
+        Config config
 ) implements CustomPacketPayload {
     private static final String path = "remote_hello_s2c";
     public static final StreamCodec<RegistryFriendlyByteBuf, HelloS2CPayload> CODEC =
             StreamCodec.composite(
                     ByteBufCodecs.STRING_UTF8,
                     HelloS2CPayload::version,
+                    Codecs.CONFIG,
+                    HelloS2CPayload::config,
                     HelloS2CPayload::new
             );
     public static final CustomPacketPayload.Type<HelloS2CPayload> ID = new CustomPacketPayload.Type<>(Satellite.id(path));

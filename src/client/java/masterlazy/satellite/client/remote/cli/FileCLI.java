@@ -10,7 +10,6 @@ import masterlazy.satellite.remote.model.Status;
 import masterlazy.satellite.remote.payload.CommandS2CPayload;
 import masterlazy.satellite.remote.payload.FileC2SPayload;
 import masterlazy.satellite.remote.payload.FileS2CPayload;
-import masterlazy.satellite.remote.pipeline.FileHandler;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import org.jetbrains.annotations.Nullable;
 
@@ -205,8 +204,8 @@ public class FileCLI {
                 return;
             }
             // Start session
-            int part = 1, receivedCount;
-            ByteBuffer[] buffers = new ByteBuffer[FileHandler.BATCH_SIZE];
+            int part = 1, receivedCount, batchSize = RemoteClient.config.remote_fileTransferBatchSize();
+            ByteBuffer[] buffers = new ByteBuffer[batchSize];
             BlockingQueue<FileS2CPayload> queue = SatelliteClient.remoteClient.getFileQueueFor(sessionId);
             boolean eof = false;
             RateCounter rateCounter = new RateCounter();
@@ -217,13 +216,13 @@ public class FileCLI {
                     if (pressedCtrlC()) throw new RuntimeException("Keyboard interruption");
                     // Fetch
                     ClientPlayNetworking.send(new FileC2SPayload(ctx.token(), sessionId, FilePayloadType.FETCH, part, new byte[0]));
-                    ctx.print(String.format("\rDownloaded %10s of %10s, \033[36m%10s/s\033[0m",
+                    ctx.print(String.format("\rDownloaded %10s of %10s, \033[36m%10s/s\033[0m  \b\b",
                             bytesToString(rateCounter.getTotal()),
                             bytesToString(fileSize),
                             bytesToString(rateCounter.getPerSecond())));
                     // Receive
                     receivedCount = 0;
-                    for (int i = 0; i < FileHandler.BATCH_SIZE && !Thread.currentThread().isInterrupted(); i++) {
+                    for (int i = 0; i < batchSize && !Thread.currentThread().isInterrupted(); i++) {
                         if (pressedCtrlC()) throw new RuntimeException("Keyboard interruption");
                         FileS2CPayload received = queue.poll(RemoteClient.FILE_POLL_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
                         if (received != null) {
@@ -235,7 +234,7 @@ public class FileCLI {
                                 eof = true;
                                 rPart = -rPart;
                             }
-                            if (rPart - part >= FileHandler.BATCH_SIZE) {
+                            if (rPart - part >= batchSize) {
                                 throw new RuntimeException("Server sent invalid part number");
                             }
                             buffers[rPart - part] = ByteBuffer.wrap(received.data());
@@ -244,10 +243,10 @@ public class FileCLI {
                             if (eof) break;
                         } else throw new RuntimeException("Timeout");
                     }
-                    if (!eof && receivedCount < FileHandler.BATCH_SIZE) {
+                    if (!eof && receivedCount < batchSize) {
                         throw new RuntimeException("Timeout");
                     }
-                    part += FileHandler.BATCH_SIZE;
+                    part += batchSize;
                     // Write to file
                     long totalToWrite = 0, written = 0;
                     for (ByteBuffer b : buffers) {

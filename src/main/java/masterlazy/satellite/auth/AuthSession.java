@@ -22,7 +22,7 @@ public class AuthSession implements HasUuid {
 
     private ServerPlayer tempPlayer = null;
 
-    public final RateLimit rateLimit = new RateLimit(10, Duration.ofSeconds(60));
+    public final RateLimit rateLimit = new RateLimit(Satellite.config.auth_failureLimitPerMinutes(), Duration.ofSeconds(60));
 
     public UUID getUUID() { return playerUUID; }
 
@@ -76,7 +76,6 @@ public class AuthSession implements HasUuid {
             flyingSpeed = DEFAULT_ABILITIES.getFlyingSpeed();
             Satellite.LOGGER.warn("[Satellite] Restored {}'s flying speed to default {}", player.getName().getString(), flyingSpeed);
         }
-        player.setGameMode(gameMode); // ...
         abilities.setWalkingSpeed(walkingSpeed);
         abilities.setFlyingSpeed(flyingSpeed);
         player.setGameMode(gameMode); // Set game mode lastly; if not so will make player unable to sprint.

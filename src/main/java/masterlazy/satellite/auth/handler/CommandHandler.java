@@ -30,7 +30,7 @@ public class CommandHandler {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             LoginCommand.register(dispatcher, this);
             PasswordCommand.register(dispatcher, this, service);
-            RegisterCommand.register(dispatcher, this);
+            if (Satellite.config.auth_allowRegister()) RegisterCommand.register(dispatcher, this);
         });
     }
 
