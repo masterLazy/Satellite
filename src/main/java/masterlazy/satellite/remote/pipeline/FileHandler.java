@@ -13,9 +13,7 @@ import masterlazy.satellite.remote.payload.FileS2CPayload;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -26,12 +24,10 @@ public class FileHandler implements PayloadHandler<FileC2SPayload> {
 
     static class SendTask {
         public Request<FileC2SPayload> request;
-        public Path file;
         public int part; // From 1
         public int partEnd;
-        public SendTask(Request<FileC2SPayload> request, Path file, int part, int partEnd) {
+        public SendTask(Request<FileC2SPayload> request, int part, int partEnd) {
             this.request = request;
-            this.file = file;
             this.part = part;
             this.partEnd = partEnd;
         }
@@ -79,7 +75,7 @@ public class FileHandler implements PayloadHandler<FileC2SPayload> {
         if (payload.payloadType() == FilePayloadType.FETCH) {
             UUID sessionId = payload.sessionId();
             ConcurrentLinkedQueue<SendTask> queue = sessionQueues.computeIfAbsent(sessionId, k -> new ConcurrentLinkedQueue<>());
-            queue.offer(new SendTask(request, session.getFile(), payload.arg(), payload.arg() + BATCH_SIZE - 1));
+            queue.offer(new SendTask(request, payload.arg(), payload.arg() + BATCH_SIZE - 1));
             if (!activeSessions.contains(sessionId)) {
                 activeSessions.offer(sessionId);
             }
@@ -91,43 +87,40 @@ public class FileHandler implements PayloadHandler<FileC2SPayload> {
         UUID sessionId = activeSessions.poll();
         if (sessionId == null) return;
         ConcurrentLinkedQueue<SendTask> queue = sessionQueues.get(sessionId);
-        if (queue == null || queue.isEmpty()) return;
-        // Send
+        if (queue == null) return;
+        FileSession session = service.getFileSession(sessionId);
+        if (queue.isEmpty() || session == null) {
+            sessionQueues.remove(sessionId);
+            return;
+        }
         SendTask task = queue.poll();
         try {
-            long fileSize = Files.size(task.file);
+            // Send
+            long fileSize = session.getSize();
             long begin = (long) (task.part-1) * PART_BYTES;
             if (begin > fileSize || begin < 0) { // No feedback to client; otherwise causes payload left in queue
                 sessionQueues.remove(sessionId);
                 return;
             }
-            try (RandomAccessFile raf = new RandomAccessFile(task.file.toString(), "r")) {
-                raf.seek(begin);
-                byte[] data = new byte[PART_BYTES];
-                int len = raf.read(data);
-                if (len != PART_BYTES) {
-                    data = Arrays.copyOfRange(data, 0, len);
-                }
-                if (len == PART_BYTES) {
-                    respond(task.request, FilePayloadType.TRANSFER, task.part, data);
-                } else {
-                    respond(task.request, FilePayloadType.TRANSFER, -task.part, data);
-                }
+            session.getFileChannel().position(begin);
+            ByteBuffer bb = ByteBuffer.wrap(new byte[PART_BYTES]);
+            int len = session.getFileChannel().read(bb);
+            if (len != PART_BYTES) { // EOF
+                respond(task.request, FilePayloadType.TRANSFER, -task.part, Arrays.copyOfRange(bb.array(), 0, len));
+            } else {
+                respond(task.request, FilePayloadType.TRANSFER, task.part, bb.array());
             }
+            // Schedule next send
             if (task.part < task.partEnd) {
                 task.part++;
                 queue.offer(task);
             }
+            if (!queue.isEmpty()) activeSessions.offer(sessionId);
         } catch (IOException e) {
             Satellite.LOGGER.error("[Satellite] Failed to handle send task",e);
             respond(task.request, FilePayloadType.INTERRUPT, 0, null);
         }
-        // End of send
-        if (!queue.isEmpty()) {
-            activeSessions.offer(sessionId);
-        } else {
-            sessionQueues.remove(sessionId);
-        }
+        if (queue.isEmpty()) sessionQueues.remove(sessionId);
     }
 
     private static void respond(Request<FileC2SPayload> request, FilePayloadType payloadType, int arg, byte @Nullable [] data) {

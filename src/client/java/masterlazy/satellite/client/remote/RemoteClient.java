@@ -29,11 +29,11 @@ public class RemoteClient {
     public static final Duration GAME_ALIVE_CHECK_BETWEEN = Duration.ofMillis(100);
 
     public static final Duration FEED_OFFER_TIMEOUT = Duration.ofMillis(10);
-    public static final Duration FEED_TIMEOUT = Duration.ofMillis(10);
+    public static final Duration FEED_POLL_TIMEOUT = Duration.ofMillis(10);
     public static final int MAX_FEED_QUEUE_SIZE = 1024;
 
     public static final Duration FILE_OFFER_TIMEOUT = Duration.ofSeconds(5);
-    public static final Duration FILE_TIMEOUT = Duration.ofSeconds(5);
+    public static final Duration FILE_POLL_TIMEOUT = Duration.ofSeconds(5);
     public static final int MAX_FILE_QUEUE_SIZE = 1024;
 
     private final ResponseManager<CommandS2CPayload> commandResponseManager = new ResponseManager<>();
@@ -127,6 +127,6 @@ public class RemoteClient {
     }
 
     public @Nullable ConsoleFeedS2CPayload pollFeed() throws InterruptedException {
-        return feedQueue.poll(FEED_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        return feedQueue.poll(FEED_POLL_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
     }
 }

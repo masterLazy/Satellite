@@ -20,7 +20,13 @@ public class FileSessionManager {
             Instant now = Instant.now();
             if (nextCheck.isAfter(now)) return;
             else nextCheck = now.plus(CHECK_BETWEEN);
-            sessionMap.entrySet().removeIf(entry -> entry.getValue().isExpiredWhen(now));
+            sessionMap.entrySet().removeIf(entry -> {
+                if (entry.getValue().isExpiredWhen(now)) {
+                    entry.getValue().close();
+                    return true;
+                }
+                return false;
+            });
         });
     }
 

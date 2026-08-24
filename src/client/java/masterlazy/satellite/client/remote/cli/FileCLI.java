@@ -250,7 +250,9 @@ public class FileCLI {
                     part += FileHandler.BATCH_SIZE;
                     // Write to file
                     long totalToWrite = 0, written = 0;
-                    for (ByteBuffer b : buffers) totalToWrite += b.remaining();
+                    for (ByteBuffer b : buffers) {
+                        if (b != null) totalToWrite += b.remaining();
+                    }
                     while (written < totalToWrite) {
                         long n = fileChannel.write(buffers, 0, receivedCount);
                         if (n <= 0) throw new RuntimeException("Failed to write to '"+tmpFile+"'");
