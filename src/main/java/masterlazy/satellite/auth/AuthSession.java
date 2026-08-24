@@ -18,6 +18,7 @@ public class AuthSession implements HasUuid {
     private GameType gameMode;
     private float walkingSpeed;
     private float flyingSpeed;
+    private static final Abilities DEFAULT_ABILITIES = new Abilities();
 
     private ServerPlayer tempPlayer = null;
 
@@ -67,6 +68,15 @@ public class AuthSession implements HasUuid {
             return;
         }
         Abilities abilities = player.getAbilities();
+        if (walkingSpeed == 0) {
+            walkingSpeed = DEFAULT_ABILITIES.getWalkingSpeed();
+            Satellite.LOGGER.warn("[Satellite] Restored {}'s walking speed to default {}", player.getName().getString(), walkingSpeed);
+        }
+        if (flyingSpeed == 0) {
+            flyingSpeed = DEFAULT_ABILITIES.getFlyingSpeed();
+            Satellite.LOGGER.warn("[Satellite] Restored {}'s flying speed to default {}", player.getName().getString(), flyingSpeed);
+        }
+        player.setGameMode(gameMode); // ...
         abilities.setWalkingSpeed(walkingSpeed);
         abilities.setFlyingSpeed(flyingSpeed);
         player.setGameMode(gameMode); // Set game mode lastly; if not so will make player unable to sprint.
