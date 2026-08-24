@@ -1,12 +1,15 @@
 package masterlazy.satellite.remote.payload;
 
 import io.netty.buffer.ByteBuf;
+import masterlazy.satellite.Satellite;
 import masterlazy.satellite.remote.model.CommandEnum;
 import masterlazy.satellite.remote.model.FilePayloadType;
 import masterlazy.satellite.remote.model.Status;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import org.xerial.snappy.Snappy;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
@@ -61,5 +64,28 @@ public class Codecs {
             res[i] = ByteBufCodecs.STRING_UTF8.decode(buf);
         }
         return res;
+    });
+
+    // Compressed byte[]
+    public static final StreamCodec<ByteBuf, byte[]> COMPRESSED_BYTES = StreamCodec.of((buf, load) -> {
+        try {
+            byte[] compressed = Snappy.compress(load);
+            int length = compressed.length;
+            buf.writeInt(length);
+            buf.writeBytes(compressed);
+        } catch (IOException e) {
+            Satellite.LOGGER.error("[Satellite] Failed to compress bytes", e);
+            throw new RuntimeException(e);
+        }
+    }, buf -> {
+        try {
+            int length = buf.readInt();
+            byte[] compressed = new byte[length];
+            buf.readBytes(compressed);
+            return Snappy.uncompress(compressed);
+        } catch (IOException e) {
+            Satellite.LOGGER.error("[Satellite] Failed to uncompress bytes", e);
+            throw new RuntimeException(e);
+        }
     });
 }

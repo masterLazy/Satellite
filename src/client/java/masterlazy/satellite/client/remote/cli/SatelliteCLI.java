@@ -39,7 +39,7 @@ public class SatelliteCLI {
     @SuppressWarnings("unused")
     @Command(name = "clear", description = "Clear the screen.")
     public void clear() {
-        ctx.print("\033[2J\033[H\033[3J"); // Including scroll-back buffer!
+        ctx.print("\033[2J\033[H\033[3J");
     }
 
     @SuppressWarnings("unused")

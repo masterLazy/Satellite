@@ -1,6 +1,7 @@
 package masterlazy.satellite.client.remote.cli;
 
 import masterlazy.satellite.client.SatelliteClient;
+import masterlazy.satellite.client.remote.RateCounter;
 import masterlazy.satellite.client.remote.RemoteClient;
 import masterlazy.satellite.client.remote.UnauthorizedException;
 import masterlazy.satellite.remote.model.CommandEnum;
@@ -14,9 +15,9 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.*;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -205,54 +206,62 @@ public class FileCLI {
             }
             // Start session
             int part = 1, receivedCount;
-            byte[][] parts = new byte[FileHandler.BATCH_SIZE][];
+            ByteBuffer[] buffers = new ByteBuffer[FileHandler.BATCH_SIZE];
             BlockingQueue<FileS2CPayload> queue = SatelliteClient.remoteClient.getFileQueueFor(sessionId);
             boolean eof = false;
-            Instant beginning = Instant.now();
-            long downloaded = 0;
-            double seconds;
-            while (!Thread.currentThread().isInterrupted() && !eof) { // TODO: 添加重试逻辑
-                ClientPlayNetworking.send(new FileC2SPayload(ctx.token(), sessionId, FilePayloadType.FETCH, part, new byte[0]));
-                seconds = Duration.between(beginning, Instant.now()).toMillis() / 1000.0;
-                if (seconds > 0.01) {
-                    ctx.print(String.format("\rDownloaded %10s of %10s, \033[36m%10s/s\033[0m", bytesToString(downloaded), bytesToString(fileSize),
-                            bytesToString(Math.round(downloaded / seconds))));
-                } else {
-                    ctx.print(String.format("\rDownloaded %10s of %10s", bytesToString(downloaded), bytesToString(fileSize)));
-                }
-                receivedCount = 0;
-                for (int i = 0; i < FileHandler.BATCH_SIZE; i++) {
-                    FileS2CPayload received = queue.poll(RemoteClient.FILE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-                    if (received != null) {
-                        if (received.payloadType() == FilePayloadType.INTERRUPT) {
-                            throw new RuntimeException("Server interrupted session");
-                        }
-                        int rPart = received.arg();
-                        if (rPart < 0) {
-                            eof = true;
-                            rPart = -rPart;
-                        }
-                        if (rPart - part >= FileHandler.BATCH_SIZE) {
-                            throw new RuntimeException("Server sent invalid part number");
-                        }
-                        parts[rPart - part] = received.data();
-                        receivedCount++;
-                        if (eof) break;
+            RateCounter rateCounter = new RateCounter();
+            try (FileChannel fileChannel = FileChannel.open(tmpFile,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND)) {
+                while (!Thread.currentThread().isInterrupted() && !eof) { // TODO: 添加重试逻辑
+                    if (pressedCtrlC()) throw new RuntimeException("Keyboard interruption");
+                    // Fetch
+                    ClientPlayNetworking.send(new FileC2SPayload(ctx.token(), sessionId, FilePayloadType.FETCH, part, new byte[0]));
+                    ctx.print(String.format("\rDownloaded %10s of %10s, \033[36m%10s/s\033[0m",
+                            bytesToString(rateCounter.getTotal()),
+                            bytesToString(fileSize),
+                            bytesToString(rateCounter.getPerSecond())));
+                    // Receive
+                    receivedCount = 0;
+                    for (int i = 0; i < FileHandler.BATCH_SIZE && !Thread.currentThread().isInterrupted(); i++) {
+                        if (pressedCtrlC()) throw new RuntimeException("Keyboard interruption");
+                        FileS2CPayload received = queue.poll(RemoteClient.FILE_POLL_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                        if (received != null) {
+                            if (received.payloadType() == FilePayloadType.INTERRUPT) {
+                                throw new RuntimeException("Server interrupted session");
+                            }
+                            int rPart = received.arg();
+                            if (rPart < 0) {
+                                eof = true;
+                                rPart = -rPart;
+                            }
+                            if (rPart - part >= FileHandler.BATCH_SIZE) {
+                                throw new RuntimeException("Server sent invalid part number");
+                            }
+                            buffers[rPart - part] = ByteBuffer.wrap(received.data());
+                            rateCounter.submit(received.data().length);
+                            receivedCount++;
+                            if (eof) break;
+                        } else throw new RuntimeException("Timeout");
+                    }
+                    if (!eof && receivedCount < FileHandler.BATCH_SIZE) {
+                        throw new RuntimeException("Timeout");
+                    }
+                    part += FileHandler.BATCH_SIZE;
+                    // Write to file
+                    long totalToWrite = 0, written = 0;
+                    for (ByteBuffer b : buffers) totalToWrite += b.remaining();
+                    while (written < totalToWrite) {
+                        long n = fileChannel.write(buffers, 0, receivedCount);
+                        if (n <= 0) throw new RuntimeException("Failed to write to '"+tmpFile+"'");
+                        written += n;
                     }
                 }
-                if (!eof && receivedCount < FileHandler.BATCH_SIZE) {
-                    throw new RuntimeException("Timeout");
-                }
-                for (int i = 0; i < receivedCount; i++) {
-                    Files.write(tmpFile, parts[i], StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                }
-                part += FileHandler.BATCH_SIZE;
-                downloaded += FileHandler.BATCH_SIZE*FileHandler.PART_BYTES;
             }
             Files.move(tmpFile, saveFile, StandardCopyOption.REPLACE_EXISTING);
             ctx.println("\r\nDownloaded '" + t + "' to '" + saveFile + "'");
         } catch (RuntimeException e) {
-            ctx.println("\r\n\033[31mFailed to download: "+e+"\033[0m");
+            ctx.println("\r\n\033[31mFailed to download: "+e.getMessage()+"\033[0m");
         } finally {
             if (Files.exists(tmpFile)) {
                 Files.delete(tmpFile);
@@ -319,5 +328,17 @@ public class FileCLI {
             ctx.println("\033[31mFailed to list: invalid response from server\033[0m");
             return null;
         }
+    }
+
+    private boolean pressedCtrlC() throws IOException {
+        int c;
+        while (ctx.getReader().ready()) {
+            c = ctx.getReader().read();
+            if (c == '\003') { // Ctrl+C
+                ctx.print("^C");
+                return true;
+            }
+        }
+        return false;
     }
 }

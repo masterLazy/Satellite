@@ -24,20 +24,28 @@ public class FileHandler implements PayloadHandler<FileC2SPayload> {
     private final RemoteService service;
     private final RemoteSessionManager remoteSessionManager;
 
-    record SendTask (
-            Request<FileC2SPayload> request,
-            Path file,
-            int part // From 1
-    ) { }
+    static class SendTask {
+        public Request<FileC2SPayload> request;
+        public Path file;
+        public int part; // From 1
+        public int partEnd;
+        public SendTask(Request<FileC2SPayload> request, Path file, int part, int partEnd) {
+            this.request = request;
+            this.file = file;
+            this.part = part;
+            this.partEnd = partEnd;
+        }
+    }
 
     private final ConcurrentLinkedQueue<UUID> activeSessions = new ConcurrentLinkedQueue<>();
     private final ConcurrentHashMap<UUID, ConcurrentLinkedQueue<SendTask>> sessionQueues = new ConcurrentHashMap<>();
     @SuppressWarnings("FieldCanBeLocal")
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-    public static final int BATCH_SIZE = 4;
-    public static final int PART_BYTES = 512*1024; // 128 KiB
-    public static final int BYTES_LIMIT_PER_SECOND = 10*1024*1024; // 10 MiB/s
+    // This is the best parameters I found: 128KiB * 64 = 8MiB/batch
+    public static final int PART_BYTES = 128*1024;
+    public static final int BATCH_SIZE = 64;
+    public static final int BYTES_LIMIT_PER_SECOND = 25*1024*1024; // 25 MiB/s
 
     public FileHandler(RemoteService service, RemoteSessionManager remoteSessionManager) {
         this.service = service;
@@ -71,9 +79,7 @@ public class FileHandler implements PayloadHandler<FileC2SPayload> {
         if (payload.payloadType() == FilePayloadType.FETCH) {
             UUID sessionId = payload.sessionId();
             ConcurrentLinkedQueue<SendTask> queue = sessionQueues.computeIfAbsent(sessionId, k -> new ConcurrentLinkedQueue<>());
-            for (int i = 0; i < BATCH_SIZE; i++) {
-                queue.offer(new SendTask(request, session.getFile(), payload.arg() + i));
-            }
+            queue.offer(new SendTask(request, session.getFile(), payload.arg(), payload.arg() + BATCH_SIZE - 1));
             if (!activeSessions.contains(sessionId)) {
                 activeSessions.offer(sessionId);
             }
@@ -92,7 +98,7 @@ public class FileHandler implements PayloadHandler<FileC2SPayload> {
             long fileSize = Files.size(task.file);
             long begin = (long) (task.part-1) * PART_BYTES;
             if (begin > fileSize || begin < 0) { // No feedback to client; otherwise causes payload left in queue
-                queue.clear();
+                sessionQueues.remove(sessionId);
                 return;
             }
             try (RandomAccessFile raf = new RandomAccessFile(task.file.toString(), "r")) {
@@ -108,12 +114,19 @@ public class FileHandler implements PayloadHandler<FileC2SPayload> {
                     respond(task.request, FilePayloadType.TRANSFER, -task.part, data);
                 }
             }
+            if (task.part < task.partEnd) {
+                task.part++;
+                queue.offer(task);
+            }
         } catch (IOException e) {
             Satellite.LOGGER.error("[Satellite] Failed to handle send task",e);
+            respond(task.request, FilePayloadType.INTERRUPT, 0, null);
         }
         // End of send
         if (!queue.isEmpty()) {
             activeSessions.offer(sessionId);
+        } else {
+            sessionQueues.remove(sessionId);
         }
     }
 

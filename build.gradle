@@ -41,6 +41,9 @@ dependencies {
 	include(modImplementation "info.picocli:picocli:4.7.7")
 	include(modImplementation "commons-io:commons-io:2.20.0")
 
+	// File transfer
+	include(modImplementation "org.xerial.snappy:snappy-java:1.1.10.8")
+
 	// Migration helper
 	shadow 'com.google.code.gson:gson:2.14.0'
 }

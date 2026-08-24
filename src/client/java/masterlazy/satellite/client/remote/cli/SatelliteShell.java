@@ -76,7 +76,7 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
             cmd.setOut(new PrintWriter(out, true));
             cmd.setErr(new PrintWriter(err, true));
 
-            print("\033[H");
+            print("\033[2J\033[H\033[3J");
             String welcome = """
                     Welcome to \r
                       \033[36m███████╗ █████╗ ████████╗███████╗██╗     ██╗     ██╗████████╗███████╗\033[0m     ██████╗██╗     ██╗\r

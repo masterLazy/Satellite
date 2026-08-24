@@ -25,7 +25,7 @@ public record FileS2CPayload (
                     FileS2CPayload::payloadType,
                     ByteBufCodecs.INT,
                     FileS2CPayload::arg,
-                    ByteBufCodecs.BYTE_ARRAY,
+                    Codecs.COMPRESSED_BYTES,
                     FileS2CPayload::data,
                     FileS2CPayload::new
             );
