@@ -29,7 +29,7 @@ public class RemoteUtils {
         }
         int unitIndex = 0;
         double size = bytes;
-        while (size >= 1024 && unitIndex < UNITS.length - 1) {
+        while (size >= 1000 && unitIndex < UNITS.length - 1) {
             size /= 1024;
             unitIndex++;
         }

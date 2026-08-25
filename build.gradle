@@ -4,7 +4,7 @@ plugins {
 	id 'com.gradleup.shadow' version '8.3.7'
 }
 
-version = project.mod_version
+version = "${project.mod_version}+${project.minecraft_version}"
 group = project.maven_group
 
 repositories {
@@ -49,11 +49,16 @@ dependencies {
 }
 
 processResources {
-	def version = project.version
-	inputs.property "version", version
+	inputs.property "version", project.version
+	inputs.property "java_version", project.java_version
+	inputs.property "minecraft_version", project.minecraft_version
+	inputs.property "loader_version", project.loader_version
 
 	filesMatching("fabric.mod.json") {
-		expand "version": version
+		expand "version": project.version,
+			"java_version": project.java_version,
+			"minecraft_version": project.minecraft_version,
+			"loader_version": project.loader_version
 	}
 }
 
