@@ -184,6 +184,10 @@ public class CommandHandler {
             if (service.addCondition(rule, condition)) {
                 if (player != null) Satellite.sendMessageWithKey(player, "guard.condition.add");
                 Satellite.LOGGER.info("[Satellite] Added condition \"{} {}\" to rule {}", condition.type(), condition.value(), ruleId);
+                if (value.startsWith("/")) {
+                    if (player != null) Satellite.sendMessageWithKey(player, "guard.condition.startsWithSlash");
+                    Satellite.LOGGER.warn("[Satellite] A command won't starts with a slash (/). This condition might have no effect.");
+                }
             } else {
                 if (player != null) Satellite.sendMessageWithKey(player, "guard.edit.fail");
                 Satellite.LOGGER.error("[Satellite] Failed to add condition to rule {}", ruleId);

@@ -63,6 +63,7 @@
   "guard.condition.add": "§e已添加触发条件",
   "guard.condition.remove": "§e已移除指定的条件",
   "guard.condition.empty": "§e条件列表为空",
+  "guard.condition.startsWithSlash": "§e警告：命令不以斜杠（/）开头，此条件可能无效",
 
   "guard.edit.failed": "§e规则修改失败",
 
