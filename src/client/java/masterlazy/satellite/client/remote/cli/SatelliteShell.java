@@ -127,7 +127,7 @@ public class SatelliteShell implements Command, Runnable, ShellContext {
                     print("\r\n Authorization failed");
                     break;
                 }
-                if (password.trim().isEmpty()) continue;
+                //if (password.trim().isEmpty()) continue;
                 try {
                     CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait(this, CommandEnum.AUTHORIZE, new String[]{password});
                     if (response == null) {

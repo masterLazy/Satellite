@@ -17,6 +17,7 @@ public enum CommandEnum {
 
     GET,
     PUT,
+    HASH,
 
     UNKNOWN;
 

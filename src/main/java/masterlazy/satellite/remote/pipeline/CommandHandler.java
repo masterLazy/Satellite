@@ -1,5 +1,7 @@
 package masterlazy.satellite.remote.pipeline;
 
+import masterlazy.satellite.HashAlgo;
+import masterlazy.satellite.HashUtils;
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.auth.AuthService;
 import masterlazy.satellite.auth.AuthSession;
@@ -40,30 +42,7 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         this.service = service;
         this.authService = authService;
         this.feedManager = feedManager;
-        pipeline.add(this::handleSingleGame)
-                .add(this::verifyPermission)
-                .add(this::verifyCommandEnum)
-                .add(this::handleAuthorize)
-                .add(request -> service.verifyToken(request, s -> respond(request, s, null)))
-                .add(this::handleConsoleFeed)
-                .add(this::handleExecute)
-                .add(this::handleList)
-                .add(this::handleMoveCopy)
-                .add(this::handleRemove)
-                .add(this::handleMkdirTouch)
-                .add(this::handleGetPut);
-    }
-
-    @Override
-    public void handle(Request<CommandC2SPayload> request) {
-        if (request.payload().command() == CommandEnum.AUTHORIZE) {
-            CommandC2SPayload payload = new CommandC2SPayload(request.payload().requestId(), request.payload().token(),
-                    request.payload().command(), new String[]{"password-protected"});
-            Satellite.B_LOGGER.debug("%s >> CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(payload));
-        } else {
-            Satellite.B_LOGGER.debug("%s >> CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(request.payload()));
-        }
-        pipeline.handle(request);
+        pipeline.add(this::handleSingleGame).add(this::verifyPermission).add(this::verifyCommandEnum).add(this::handleAuthorize).add(request -> service.verifyToken(request, s -> respond(request, s, null))).add(this::handleConsoleFeed).add(this::handleExecute).add(this::handleList).add(this::handleMoveCopy).add(this::handleRemove).add(this::handleMkdirTouch).add(this::handleGetPutHash);
     }
 
     private static boolean respond(Request<CommandC2SPayload> request, Status status, String @Nullable [] results) {
@@ -71,6 +50,17 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         request.respond(feedback);
         Satellite.B_LOGGER.debug("%s << CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(feedback));
         return true;
+    }
+
+    @Override
+    public void handle(Request<CommandC2SPayload> request) {
+        if (request.payload().command() == CommandEnum.AUTHORIZE) {
+            CommandC2SPayload payload = new CommandC2SPayload(request.payload().requestId(), request.payload().token(), request.payload().command(), new String[]{"password-protected"});
+            Satellite.B_LOGGER.debug("%s >> CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(payload));
+        } else {
+            Satellite.B_LOGGER.debug("%s >> CommandS2CPayload:\n%s", request.sender(), Satellite.GSON.toJson(request.payload()));
+        }
+        pipeline.handle(request);
     }
 
     // Common
@@ -129,9 +119,8 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
 
     public boolean handleConsoleFeed(Request<CommandC2SPayload> request) {
         CommandC2SPayload payload = request.payload();
-        if (payload.command() != CommandEnum.SUBSCRIBE &&
-            payload.command() != CommandEnum.UNSUBSCRIBE &&
-            payload.command() != CommandEnum.FETCH_1000) return false;
+        if (payload.command() != CommandEnum.SUBSCRIBE && payload.command() != CommandEnum.UNSUBSCRIBE && payload.command() != CommandEnum.FETCH_1000)
+            return false;
 
         if (!feedManager.isRemoteConsoleAvailable()) {
             return respond(request, Status.INTERNAL_SERVER_ERROR, null);
@@ -185,14 +174,8 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         boolean detailed = options.contains("l");
         try (var stream = Files.list(path)) {
             List<Path> allChildren = stream.toList();
-            List<String> subDirs = allChildren.stream()
-                    .filter(Files::isDirectory)
-                    .map(p -> pathToString(p, detailed))
-                    .toList();
-            List<String> subFiles = allChildren.stream()
-                    .filter(Files::isRegularFile)
-                    .map(p -> pathToString(p, detailed))
-                    .toList();
+            List<String> subDirs = allChildren.stream().filter(Files::isDirectory).map(p -> pathToString(p, detailed)).toList();
+            List<String> subFiles = allChildren.stream().filter(Files::isRegularFile).map(p -> pathToString(p, detailed)).toList();
             List<String> paths = new ArrayList<>();
             paths.add(((Integer) subDirs.size()).toString());
             paths.addAll(subDirs);
@@ -229,9 +212,7 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
                 return respond(request, Status.FORBIDDEN, new String[]{"Source equals to destination"});
             }
             if (RemoteUtils.isSubDirectory(src, dest)) {
-                return respond(request, Status.FORBIDDEN, new String[]{
-                        isCopy ? "Cannot copy a directory into itself" : "Cannot move a directory into itself"
-                });
+                return respond(request, Status.FORBIDDEN, new String[]{isCopy ? "Cannot copy a directory into itself" : "Cannot move a directory into itself"});
             }
             if (Files.isDirectory(src)) {
                 if (Files.exists(dest)) {
@@ -339,9 +320,10 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         return respond(request, Status.OK, null);
     }
 
-    public boolean handleGetPut(Request<CommandC2SPayload> request) {
+    public boolean handleGetPutHash(Request<CommandC2SPayload> request) {
         CommandC2SPayload payload = request.payload();
-        if (payload.command() != CommandEnum.GET && payload.command() != CommandEnum.PUT) return false;
+        if (payload.command() != CommandEnum.GET && payload.command() != CommandEnum.PUT && payload.command() != CommandEnum.HASH)
+            return false;
         String[] args = payload.args();
         if (args.length < 1) {
             return respond(request, Status.BAD_REQUEST, null);
@@ -350,22 +332,37 @@ public class CommandHandler implements PayloadHandler<CommandC2SPayload> {
         if (target == null) {
             return respond(request, Status.NOT_FOUND, null);
         }
-        if (payload.command() == CommandEnum.GET) {
+        if (payload.command() == CommandEnum.GET || payload.command() == CommandEnum.HASH) {
             if (!Files.exists(target)) {
                 return respond(request, Status.NOT_FOUND, null);
             }
             if (Files.isDirectory(target)) {
                 return respond(request, Status.FORBIDDEN, null);
             }
-            FileSession session = new FileSession(target, payload.token(), request.sender());
-            service.putFileSession(session);
-            long size;
             try {
-                size = Files.size(target);
+                if (payload.command() == CommandEnum.GET) {
+                    long size;
+                    size = Files.size(target);
+                    FileSession session = new FileSession(target, payload.token(), request.sender());
+                    service.putFileSession(session);
+                    return respond(request, Status.OK, new String[]{session.getId().toString(), String.valueOf(size)});
+                } else {
+                    HashAlgo algo;
+                    if (args.length < 2) {
+                        algo = HashAlgo.CRC32;
+                    }else {
+                        algo = HashAlgo.from(args[1]);
+                        if (algo == null) {
+                            return respond(request, Status.BAD_REQUEST, new String[]{"Unsupported algorithm '"+args[1]+"'"});
+                        }
+                    }
+                    String hash = HashUtils.from(target, algo);
+                    String res = algo.toString().toLowerCase()+":"+hash;
+                    return respond(request, Status.OK, new String[]{res});
+                }
             } catch (IOException e) {
                 return respond(request, Status.INTERNAL_SERVER_ERROR, null);
             }
-            return respond(request, Status.OK, new String[]{session.getId().toString(), String.valueOf(size)});
         } else { // PUT
             if (args.length < 2) {
                 return respond(request, Status.BAD_REQUEST, null);

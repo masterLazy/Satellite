@@ -18,10 +18,10 @@ public class GuardService {
     private final EventHandler eventHandler;
 
     public static Duration getConfirmTimeout() {
-        return Duration.ofSeconds(Satellite.config.guard_confirmTimeoutSeconds());
+        return Duration.ofSeconds(Satellite.config.guard.confirmTimeoutSeconds);
     }
     public static Duration getRequestOpTimeout() {
-        return Duration.ofSeconds(Satellite.config.guard_requestOpTimeoutSeconds());
+        return Duration.ofSeconds(Satellite.config.guard.requestOpTimeoutSeconds);
     }
 
     public GuardService(String baseDir) {

@@ -1,40 +1,46 @@
 package masterlazy.satellite;
 
-public record Config (
-        int version,
-        boolean mixin_whiteListCheckName,
-        boolean mixin_enforceOfflineProfile,
+public class Config {
+    public static final String VERSION = "v1"; // Config version
 
-        boolean auth_enabled,
-        boolean auth_allowRegister,
-        int auth_failureLimitPerMinutes,
+    public final String version;
 
-        boolean guard_enabled,
-        int guard_confirmTimeoutSeconds,
-        int guard_requestOpTimeoutSeconds,
+    public final MixinConfig mixin = new MixinConfig();
+    public final AuthConfig auth = new AuthConfig();
+    public final GuardConfig guard = new GuardConfig();
+    public final RemoteConfig remote = new RemoteConfig();
 
-        boolean remote_enabled,
-        int remote_sessionInactivityTimeoutMinutes,
-        int remote_requestLimitPerMinute,
-        int remote_fileTransferLimitBytesPerSecond,
-        int remote_fileTransferPartSizeBytes,
-        int remote_fileTransferBatchSize
-) {
-    public Config() {
-        this(   1,
-                true,
-                true,
-                true,
-                false,
-                5,
-                true,
-                30,
-                60,
-                true,
-                30,
-                1200,
-                20*1024*1024,
-                128*1024,
-                64);
+    public Config(String version) {
+        this.version = version;
+    }
+
+    public static class MixinConfig {
+        public boolean whiteListCheckName = true;
+        public boolean enforceOfflineProfile = true;
+    }
+
+    public static class AuthConfig {
+        public boolean enabled = true;
+        public boolean allowRegister = false;
+        public int failureLimitPerMinutes = 5;
+    }
+
+    public static class GuardConfig {
+        public boolean enabled = true;
+        public int confirmTimeoutSeconds = 30;
+        public int requestOpTimeoutSeconds = 60;
+    }
+
+    public static class RemoteConfig {
+        public boolean enabled = true;
+        public int sessionInactivityTimeoutMinutes = 30;
+        public int requestLimitPerMinute = 1200;
+        public final FileTransferConfig fileTransfer = new FileTransferConfig();
+    }
+
+    public static class FileTransferConfig {
+        public int rateLimitBytesPerSecond = 20 * 1024 * 1024;
+        public int partSizeBytes = 128 * 1024;
+        public int batchSize = 64;
     }
 }

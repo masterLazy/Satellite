@@ -55,6 +55,7 @@ public record CommandS2CPayload(
 | TOUCH       | `target`           |              |                       | `NOT_FOUND` 路径无效                                       |
 | GET         | `target`           |              | `sessionId, fileSize` | `NOT_FOUND` 目标不存在<br />`FORBIDDEN` 目标是目录         |
 | PUT         | `target, fileSize` | `f` 覆盖远程 | `sessionId`           | `NOT_FOUND` 路径无效<br />`FORBIDDEN` 已存在同名目录或文件 |
+| HASH        | `target`           |              | `hash`                | `NOT_FOUND` 目标不存在<br />`FORBIDDEN` 目标是目录         |
 
 - AUTHORIZE：单人模式不鉴权，直接发放令牌
 - FETCH_1000：每行最多1024个字符

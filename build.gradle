@@ -52,12 +52,14 @@ processResources {
 	inputs.property "version", project.version
 	inputs.property "java_version", project.java_version
 	inputs.property "minecraft_version", project.minecraft_version
+	inputs.property "minecraft_compatible_version", project.minecraft_compatible_version
 	inputs.property "loader_version", project.loader_version
 
 	filesMatching("fabric.mod.json") {
 		expand "version": project.version,
 			"java_version": project.java_version,
 			"minecraft_version": project.minecraft_version,
+			"minecraft_compatible_version": project.minecraft_compatible_version,
 			"loader_version": project.loader_version
 	}
 }

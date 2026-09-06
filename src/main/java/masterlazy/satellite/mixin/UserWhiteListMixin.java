@@ -14,7 +14,7 @@ public class UserWhiteListMixin {
      */
     @Overwrite
     public String getKeyForUser(GameProfile gameProfile) {
-        if (Satellite.config.mixin_whiteListCheckName()) {
+        if (Satellite.config.mixin.whiteListCheckName) {
             return gameProfile.getName();
         } else {
             return gameProfile.getId().toString();

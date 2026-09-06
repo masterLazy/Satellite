@@ -10,7 +10,7 @@ public class RemoteSession {
     private final String token;
     private final String owner;
 
-    private final RateLimit rateLimit = new RateLimit(Satellite.config.remote_requestLimitPerMinute(), Duration.ofSeconds(60));
+    private final RateLimit rateLimit = new RateLimit(Satellite.config.remote.requestLimitPerMinute, Duration.ofSeconds(60));
 
     private Instant expireAt;
 
@@ -33,7 +33,7 @@ public class RemoteSession {
     }
 
     private void refresh() {
-        expireAt = Instant.now().plus(Duration.ofMinutes(Satellite.config.remote_sessionInactivityTimeoutMinutes()));
+        expireAt = Instant.now().plus(Duration.ofMinutes(Satellite.config.remote.sessionInactivityTimeoutMinutes));
     }
 
     public boolean tryRequest() {

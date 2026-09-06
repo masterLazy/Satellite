@@ -115,6 +115,15 @@ public class SatelliteCLI {
     }
 
     @SuppressWarnings("unused")
+    @Command(name = "hash", description = "Get hash of a file on server.")
+    public void hash(
+            @CommandLine.Parameters(paramLabel = "<target>") String target,
+            @CommandLine.Parameters(paramLabel = "<algorithm>", description = "crc32 | md5 | sha256", defaultValue = "") String algo
+    ) throws ExecutionException, InterruptedException {
+        fileCLI.hash(target, algo);
+    }
+
+    @SuppressWarnings("unused")
     @Command(name = "get", description = "Download file from server.")
     public void get(
             @CommandLine.Parameters(paramLabel = "<target>") String target,

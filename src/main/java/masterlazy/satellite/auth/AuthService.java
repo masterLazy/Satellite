@@ -1,5 +1,7 @@
 package masterlazy.satellite.auth;
 
+import masterlazy.satellite.HashAlgo;
+import masterlazy.satellite.HashUtils;
 import masterlazy.satellite.Satellite;
 import masterlazy.satellite.auth.handler.CommandHandler;
 import masterlazy.satellite.auth.handler.EventHandler;
@@ -45,14 +47,14 @@ public class AuthService {
     }
 
     public void savePassword(String username, String password) {
-        registerRepository.putEntry(new RegisterEntry(username, AuthUtils.getHash(password)));
+        registerRepository.putEntry(new RegisterEntry(username, HashUtils.from(password, HashAlgo.SHA256)));
         registerRepository.save();
     }
 
     public boolean isCorrectPassword(String username, String password) {
         RegisterEntry registerEntry = registerRepository.getEntry(username);
         if (registerEntry == null) return false;
-        return registerEntry.pwd_hash().equals(AuthUtils.getHash(password));
+        return registerEntry.pwd_hash().equals(HashUtils.from(password, HashAlgo.SHA256));
     }
 
     public AuthSession getSession(ServerPlayer player) {

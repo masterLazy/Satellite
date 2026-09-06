@@ -22,7 +22,7 @@ public class AuthSession implements HasUuid {
 
     private ServerPlayer tempPlayer = null;
 
-    public final RateLimit rateLimit = new RateLimit(Satellite.config.auth_failureLimitPerMinutes(), Duration.ofSeconds(60));
+    public final RateLimit rateLimit = new RateLimit(Satellite.config.auth.failureLimitPerMinutes, Duration.ofSeconds(60));
 
     public UUID getUUID() { return playerUUID; }
 

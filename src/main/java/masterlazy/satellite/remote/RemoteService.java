@@ -23,7 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class RemoteService {
-    public static final String VERSION = "v1";
+    public static final String VERSION = "v1"; // Remote API version
 
     private final AuthService authService;
     private final RemoteSessionManager remoteSessionManager;

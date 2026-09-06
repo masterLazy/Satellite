@@ -153,6 +153,29 @@ public class FileCLI {
         }
     }
 
+    public void hash(String target, String algo) throws ExecutionException, InterruptedException {
+        String t = resolve(target);
+        if (t == null) return;
+        String[] args = algo.isEmpty() ? new String[]{t} : new String[]{t,algo};
+        CommandS2CPayload response = SatelliteClient.remoteClient.sendAndWait(ctx, CommandEnum.HASH, args);
+        if (response == null) return;
+        if (response.status() == Status.UNAUTHORIZED) {
+            ctx.renewToken();
+            response = SatelliteClient.remoteClient.sendAndWait(ctx, CommandEnum.HASH, args);
+            if (response == null) return;
+            if (response.status() == Status.UNAUTHORIZED) throw new UnauthorizedException();
+        }
+        if (response.status() != Status.OK) {
+            ctx.reportFailure("get hash", response);
+            return;
+        }
+        try {
+            ctx.println(response.results()[0]);
+        } catch (Exception e) {
+            ctx.println("Server sent invalid response: "+e);
+        }
+    }
+
     public void get(String target, String savePathStr, boolean override) throws ExecutionException, InterruptedException, IOException {
         String t = resolve(target);
         if (t == null) return;
@@ -204,7 +227,7 @@ public class FileCLI {
                 return;
             }
             // Start session
-            int part = 1, receivedCount, batchSize = RemoteClient.config.remote_fileTransferBatchSize();
+            int part = 1, receivedCount, batchSize = RemoteClient.config.remote.fileTransfer.batchSize;
             ByteBuffer[] buffers = new ByteBuffer[batchSize];
             BlockingQueue<FileS2CPayload> queue = SatelliteClient.remoteClient.getFileQueueFor(sessionId);
             boolean eof = false;

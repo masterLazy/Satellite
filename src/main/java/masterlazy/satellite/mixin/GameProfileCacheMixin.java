@@ -20,7 +20,7 @@ public class GameProfileCacheMixin {
     @Inject(method = "get*", at = @At("RETURN"), cancellable = true)
     public void get(CallbackInfoReturnable<Optional<GameProfile>> cir) {
         GameProfile profile = cir.getReturnValue().orElse(null);
-        if (Satellite.config.mixin_enforceOfflineProfile() && profile != null) {
+        if (Satellite.config.mixin.enforceOfflineProfile && profile != null) {
             cir.setReturnValue(Optional.of(UUIDUtil.createOfflineProfile(profile.getName())));
         }
     }

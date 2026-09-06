@@ -40,13 +40,13 @@ public class FileHandler implements PayloadHandler<FileC2SPayload> {
 
     // These are the best parameters I found: 128KiB * 64 = 8MiB/batch
     public static int getPartBytes() {
-        return Satellite.config.remote_fileTransferPartSizeBytes();
+        return Satellite.config.remote.fileTransfer.partSizeBytes;
     }
     public static int getBatchSize() {
-        return Satellite.config.remote_fileTransferBatchSize();
+        return Satellite.config.remote.fileTransfer.batchSize;
     }
     public static int getRateLimit() {
-        return Satellite.config.remote_fileTransferLimitBytesPerSecond();
+        return Satellite.config.remote.fileTransfer.rateLimitBytesPerSecond;
     }
 
     public FileHandler(RemoteService service, RemoteSessionManager remoteSessionManager) {

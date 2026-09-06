@@ -65,7 +65,7 @@ public class Satellite implements ModInitializer {
         if (Files.exists(configFile)) {
             try (BufferedReader reader = Files.newBufferedReader(configFile, StandardCharsets.UTF_8)) {
                 Config loaded = Satellite.GSON.fromJson(reader, Config.class);
-                if (loaded.version() == new Config().version()) {
+                if (loaded.version.equals(Config.VERSION)) {
                     config = loaded;
                     Satellite.LOGGER.info("[Satellite] Loaded {}", configFile);
                 } else {
@@ -76,7 +76,7 @@ public class Satellite implements ModInitializer {
             }
         }
         if (config == null) {
-            config = new Config();
+            config = new Config(Config.VERSION);
             Satellite.LOGGER.info("[Satellite] Loaded default configurations");
             try (BufferedWriter writer = Files.newBufferedWriter(configFile, StandardCharsets.UTF_8)) {
                 Satellite.GSON.toJson(config, writer);
@@ -86,12 +86,12 @@ public class Satellite implements ModInitializer {
             }
         }
 
-        if (config!=null && config.remote_enabled()) remoteService.onInitialize();
+        if (config!=null && config.remote.enabled) remoteService.onInitialize();
     }
 
     public static void onDedicatedInitialize() {
-        if (config!=null && config.auth_enabled()) authService.onInitialize();
-        if (config!=null && config.guard_enabled()) guardService.onInitialize();
+        if (config!=null && config.auth.enabled) authService.onInitialize();
+        if (config!=null && config.guard.enabled) guardService.onInitialize();
     }
 
     // Server

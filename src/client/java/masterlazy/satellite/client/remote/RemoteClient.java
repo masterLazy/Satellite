@@ -83,8 +83,8 @@ public class RemoteClient {
                 ClientPlayNetworking.send(new HelloC2SPayload(true));
                 remoteAvailable = true;
             }
-            if (config.version() == new Config().version()) {
-                Satellite.LOGGER.warn("[Satellite Client] Server sent a version-unmatched config (version={})", config.version());
+            if (config.version.equals(Config.VERSION)) {
+                Satellite.LOGGER.warn("[Satellite Client] Server sent a version-unmatched config (version={})", config.version);
             }
             RemoteClient.config = config;
         }
